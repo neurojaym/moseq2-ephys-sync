@@ -2,7 +2,6 @@
 Tools for creating bit codes from LED and ephys TTLs, and matching them
 '''
 import os
-import numpy as np
 
 
 def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03_codes=0

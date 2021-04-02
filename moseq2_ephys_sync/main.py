@@ -14,8 +14,6 @@ from glob import glob
 import joblib
 import argparse
 
-from skimage.feature import canny
-from scipy import ndimage as ndi
 
 from mlinsights.mlmodel import PiecewiseRegressor
 from sklearn.tree import DecisionTreeRegressor

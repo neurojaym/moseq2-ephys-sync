@@ -2,8 +2,6 @@
 Tools for extracting info, timestamps, and frames from mkv files
 '''
 import os
-import subprocess
-import numpy as np
 
 
 def get_mkv_info(fileloc, stream=1):

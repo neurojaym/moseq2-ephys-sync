@@ -2,9 +2,8 @@
 Tools for extracting LED states from mkv files
 '''
 import os
-import numpy as np
-from skimage.feature import canny
-from scipy import ndimage as ndi
+
+
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
@@ -29,7 +28,7 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     return out
 
 
-def get_led_data(frame_data_chunk, num_leds = 4,flip_horizontal=False,flip_vertical=False,sort_by=None):
+def get_led_data(frame_data_chunk,num_leds = 4,flip_horizontal=False,flip_vertical=False,sort_by=None):
     
     
     ## cropping:
@@ -70,6 +69,8 @@ def get_led_data(frame_data_chunk, num_leds = 4,flip_horizontal=False,flip_verti
     else:
         sorting = range(4)
         print('Choose how to sort LEDs: vertical, horizontal, or by variance (None)')
+    
+
     
     
     led_thresh = 2e4
