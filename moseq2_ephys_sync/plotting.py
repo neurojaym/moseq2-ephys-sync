@@ -71,3 +71,15 @@ def plot_matches_video_time(predicted_video_times,ephys_codes,led_codes,save_pat
     f.savefig('%s/matched_codes_video_time.pdf' % save_path)
 
     plt.close(f)
+
+
+def plot_video_frame(frame):
+    f = plt.figure(dpi=600)
+
+    plt.imshow(frame.std(axis=0))
+    plt.colorbar()
+
+    f.savefig('%s/frame_std.pdf' % save_path)
+
+    plt.close(f)
+

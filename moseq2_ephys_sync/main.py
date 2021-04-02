@@ -84,6 +84,8 @@ if __name__ == "__main__" :
     frame_batches = gen_batch_sequence(info['nframes'], chunk_size,
                                            0, offset=0)
 
+    print('info = ', info)
+    print('timestamps.shape = ', timestamps.shape)
 
     ############### Cycle through the frame chunks to get all LED events:
     num_chunks = len(frame_batches)
@@ -98,9 +100,12 @@ if __name__ == "__main__" :
                                       frame_size=info['dims'],timestamps=timestamps,threads=8,
                                                       finfo=info)
 
+        if i==0:
+            plot_video_frame(frame_data_chunk)
+
         leds = get_led_data(frame_data_chunk,num_leds=4,sort_by='horizontal')
         
-        time_offset = frame_chunks[0,i] ## how many frames away from first chunk's
+        time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
         
         led_events.append(get_events(leds,timestamps[frame_chunks[0,i]:frame_chunks[1,i]],time_offset,num_leds=4))
         
