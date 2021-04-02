@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: moseq2-ephys-sync
+Version: 0.0.1
+Summary: Tools to sync Open Ephys data with video data using IR LEDs
+Home-page: UNKNOWN
+Author: Grigori Guitchounts
+Author-email: guitchounts@fas.harvard.edu
+License: UNKNOWN
+Description: Tools to sync ephys data with video data using IR LEDs, specifically using Open Ephys and Azure Kinect (mkv files) data. The sync signal comes from IR LEDs in view of the camera, whose trigger signals are also routed as TTL inputs to the ephys acquisition system. The LED on/off states are converted to bit codes, and the resulting sequences of bit codes in the video frames and ephys data are matched. The matches are used to build linear models (piecewise linear regression) that translate video time into ephys time and vice versa. 
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown

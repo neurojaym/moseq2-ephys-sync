@@ -1,0 +1,10 @@
+mlinsights
+jupyter
+seaborn
+pandas
+joblib==0.15.1
+scipy
+ipython
+numpy
+scikit-learn
+matplotlib
