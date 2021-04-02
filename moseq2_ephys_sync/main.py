@@ -118,7 +118,7 @@ if __name__ == "__main__" :
 
     ################################# Load the ephys TTL data #####################################
 
-    ephys_ttl_path = glob('%s/*/*/events/*/TTL_*/' % base_path)[0] 
+    ephys_ttl_path = glob('%s/**/TTL_*/' % base_path,recursive = True)[0]
     channels = np.load('%s/channel_states.npy' % ephys_ttl_path)
     ephys_timestamps = np.load('%s/timestamps.npy' % ephys_ttl_path)
 
