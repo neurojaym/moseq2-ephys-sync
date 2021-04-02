@@ -25,7 +25,7 @@ import moseq2_extract.io.video as moseq_video
 from video import get_mkv_stream_names, get_mkv_info
 from extract_leds import gen_batch_sequence, get_led_data, get_events
 from sync import events_to_codes, match_codes
-from plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_matches_video_time
+from plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_matches_video_time,plot_video_frame
 
 
 if __name__ == "__main__" :
