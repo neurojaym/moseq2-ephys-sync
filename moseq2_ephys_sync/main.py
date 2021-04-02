@@ -57,6 +57,8 @@ if __name__ == "__main__" :
 
     timestamps.to_csv('%s.csv' % depth_path[:-4] ) # save the timestamps
 
+    timestamps = timestamps.values[:,1].flatten()
+
     ## we'll load the actual frames in chunks of 1000/2000. let's see how many chunks we need:
     nframes = info['nframes']
     chunk_size = 2000
