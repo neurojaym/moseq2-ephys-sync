@@ -13,6 +13,7 @@ import shutil
 from glob import glob
 import joblib
 import argparse
+import json
 
 
 from mlinsights.mlmodel import PiecewiseRegressor
@@ -49,15 +50,31 @@ if __name__ == "__main__" :
 
     stream_names = get_mkv_stream_names(depth_path) # e.g. {'DEPTH': 0, 'IR': 1}
 
+    ### make paths for info and timestamps. if they exist, don't recompute:
+    info_path = '%s/info.json' % base_path
+    timestamp_path = '%s/mkv_timestamps.csv' % base_path 
 
-    ## get info on the depth file; we'll use this to see how many frames we have
-    info,timestamps = get_mkv_info(depth_path,stream=stream_names['DEPTH'])
+    if (os.path.exists(info_path) and os.path.exists(timestamp_path) ):
+        
+        with open(info_path,'r') as f:
+            info = json.load(f)
 
-    timestamps = pd.DataFrame(timestamps)
+        timestamps = pd.read_csv(timestamp_path)
+        timestamps = timestamps.values[:,1].flatten()
 
-    timestamps.to_csv('%s.csv' % depth_path[:-4] ) # save the timestamps
+    else:
+        ## get info on the depth file; we'll use this to see how many frames we have
+        info,timestamps = get_mkv_info(depth_path,stream=stream_names['DEPTH'])
 
-    timestamps = timestamps.values[:,1].flatten()
+        ## save info and timestamps:
+        timestamps = pd.DataFrame(timestamps)
+        timestamps.to_csv(timestamp_path) # save the timestamps
+        timestamps = timestamps.values
+        
+        with open(info_path, 'w') as f:
+            json.dump(info, f)
+
+        
 
     ## we'll load the actual frames in chunks of 1000/2000. let's see how many chunks we need:
     nframes = info['nframes']
