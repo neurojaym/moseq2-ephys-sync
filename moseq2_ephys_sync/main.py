@@ -101,7 +101,7 @@ if __name__ == "__main__" :
                                                       finfo=info)
 
         if i==0:
-            plot_video_frame(frame_data_chunk)
+            plot_video_frame(frame_data_chunk,save_path)
 
         leds = get_led_data(frame_data_chunk,num_leds=4,sort_by='horizontal')
         

@@ -73,7 +73,7 @@ def plot_matches_video_time(predicted_video_times,ephys_codes,led_codes,save_pat
     plt.close(f)
 
 
-def plot_video_frame(frame):
+def plot_video_frame(frame,save_path):
     f = plt.figure(dpi=600)
 
     plt.imshow(frame.std(axis=0))
