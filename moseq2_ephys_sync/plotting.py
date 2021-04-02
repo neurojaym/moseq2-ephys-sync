@@ -8,7 +8,7 @@ import numpy as np
 ## visualize a small chunk of the bit codes. do you see a match? 
 def plot_code_chunk(ephys_codes,led_codes,ephys_fs,save_path):
 
-    f,axarr = plt.subplots(1,2,dpi=600,sharex=True)
+    f,axarr = plt.subplots(2,1,dpi=600,sharex=True)
 
     axarr[0].plot(ephys_codes[:,0]/ephys_fs,ephys_codes[:,1],label='ephys bit codes')
 
@@ -65,6 +65,9 @@ def plot_matches_video_time(predicted_video_times,ephys_codes,led_codes,save_pat
     plt.plot(predicted_video_times[start:stop] , ephys_codes[start:stop,1],lw=2,label='Predicted video times')
 
     plt.plot(led_codes[start:stop,0], led_codes[start:stop,1],alpha=0.5,lw=1,label='Actual video times')
+
+    plt.xlabel('Time (sec)')
+    plt.ylabel('Bit Code')
 
     plt.legend()
 
