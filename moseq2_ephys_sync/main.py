@@ -107,7 +107,7 @@ if __name__ == "__main__" :
         
         time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
         
-        led_events.append(get_events(leds,timestamps[frame_chunks[0,i]:frame_chunks[1,i]],time_offset,num_leds=4))
+        led_events.append(get_events(leds,timestamps[frame_batches[i]],time_offset,num_leds=4))
         
         
     led_events = np.concatenate(led_events)
@@ -118,7 +118,7 @@ if __name__ == "__main__" :
 
     ################################# Load the ephys TTL data #####################################
 
-    ephys_ttl_path = glob('%s/*/*/events/Rhythm_FPGA-100.0/TTL_1/' % base_path)[0] 
+    ephys_ttl_path = glob('%s/*/*/events/*/TTL_*/' % base_path)[0] 
     channels = np.load('%s/channel_states.npy' % ephys_ttl_path)
     ephys_timestamps = np.load('%s/timestamps.npy' % ephys_ttl_path)
 

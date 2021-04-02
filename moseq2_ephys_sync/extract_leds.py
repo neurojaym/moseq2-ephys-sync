@@ -29,7 +29,7 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     return out
 
 
-def get_led_data(frame_data_chunk, num_leds = 4,flip_horizontal=False,flip_vertical=False,sort_by=None):
+def get_led_data(frame_data_chunk,num_leds = 4,flip_horizontal=False,flip_vertical=False,sort_by=None):
     
     
     ## cropping:
@@ -39,6 +39,7 @@ def get_led_data(frame_data_chunk, num_leds = 4,flip_horizontal=False,flip_verti
         print('Flipping image horizontally')
         frame_data_chunk = frame_data_chunk[:,:,::-1]
     if flip_vertical:
+        print('Flipping image vertically')
         frame_data_chunk = frame_data_chunk[:,::-1,:]
     
     frame_uint8 = np.asarray(frame_data_chunk / frame_data_chunk.max() * 255, dtype='uint8')
@@ -50,13 +51,29 @@ def get_led_data(frame_data_chunk, num_leds = 4,flip_horizontal=False,flip_verti
     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
     
+
+    
     if num_features != num_leds:
         print('OoOOoOooOooOops! Number of features (%d) did not match the number of LEDs (%d)' % (num_features,num_leds))
-    
+        
+        ## erase extra labels:
+        if num_features > num_leds:
+            
+            
+            led_size_thresh = 20
+            labels_to_erase = [label for label in np.unique(labeled_leds) if (len(np.where(labeled_leds==label)[0]) < led_size_thresh and label > 0) ]
+            
+            for erase in labels_to_erase:
+                print('Erasing extraneous label #%d' % erase)
+                labeled_leds[labeled_leds==erase] = 0
+                
+    ## assign labels to the LEDs
+    labels = [label for label in np.unique(labeled_leds) if label > 0 ]
+            
     
     ## get LED x and y positions for sorting
-    leds_xs = [np.where(labeled_leds==i+1)[1].mean() for i in range(num_leds)] 
-    leds_ys = [np.where(labeled_leds==i+1)[0].mean() for i in range(num_leds)]  
+    leds_xs = [np.where(labeled_leds==i)[1].mean() for i in labels] 
+    leds_ys = [np.where(labeled_leds==i)[0].mean() for i in labels]  
     
     if sort_by == None: ## if not specified, sort by where there's most variance    
         if np.std(leds_xs) > np.std(leds_ys): # sort leds by the x coord:
@@ -68,7 +85,7 @@ def get_led_data(frame_data_chunk, num_leds = 4,flip_horizontal=False,flip_verti
     elif sort_by == 'horizontal':
         sorting = np.argsort(leds_xs)
     else:
-        sorting = range(4)
+        sorting = range(num_leds)
         print('Choose how to sort LEDs: vertical, horizontal, or by variance (None)')
     
     
@@ -76,10 +93,10 @@ def get_led_data(frame_data_chunk, num_leds = 4,flip_horizontal=False,flip_verti
 
     leds = []
 
-    for i in sorting:
+    for i in range(num_leds):
 
-        led_x = np.where(labeled_leds==i+1)[0]
-        led_y = np.where(labeled_leds==i+1)[1]
+        led_x = np.where(labeled_leds==sorting[i]+1)[0]
+        led_y = np.where(labeled_leds==sorting[i]+1)[1]
 
         led = frame_data_chunk[:,led_x,led_y].mean(axis=1) #on/off block signals
 
