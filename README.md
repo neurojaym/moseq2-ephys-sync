@@ -18,7 +18,7 @@ The script assumes your input folder structure looks like this:
 │   
 │       
 │
-└───ephys_folder/ (this might be e.g. Record Node 10X/ experiment1/ depending on the version of the Open Ephys GUI you're using) 
+└───ephys_folder/ (this might be e.g. Record Node 10X/ or experiment1/ depending on the version of the Open Ephys GUI you're using) 
 │   │
 │   └───recording1/
 │       │
