@@ -20,17 +20,7 @@ from sync import events_to_codes, match_codes
 from plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_matches_video_time,plot_video_frame
 
 
-if __name__ == "__main__" :
-
-    ## take a config file w/ a list of paths, sync each of those and plot the results in a subfolder called /sync/
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('-path', type=str)
-
-    settings = parser.parse_args(); 
-
-    base_path = settings.path #'/n/groups/datta/maya/ofa-snr/mj-snr-01/mj_snr_01_2021-03-24_11-06-33/'
+def sync(base_path):
 
     save_path = '%s/sync/' % base_path
     if not os.path.exists(save_path):
@@ -61,7 +51,7 @@ if __name__ == "__main__" :
         ## save info and timestamps:
         timestamps = pd.DataFrame(timestamps)
         timestamps.to_csv(timestamp_path) # save the timestamps
-        timestamps = timestamps.values
+        timestamps = timestamps.values.flatten()
         
         with open(info_path, 'w') as f:
             json.dump(info, f)
@@ -190,3 +180,24 @@ if __name__ == "__main__" :
 
 
     print('Syncing complete. FIN')
+
+
+
+
+if __name__ == "__main__" :
+
+    ## take a config file w/ a list of paths, sync each of those and plot the results in a subfolder called /sync/
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-path', type=str)
+
+    settings = parser.parse_args(); 
+
+    base_path = settings.path #'/n/groups/datta/maya/ofa-snr/mj-snr-01/mj_snr_01_2021-03-24_11-06-33/'
+
+
+    sync(base_path)
+
+    
+    
