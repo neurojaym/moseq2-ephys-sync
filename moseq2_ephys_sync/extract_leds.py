@@ -124,7 +124,7 @@ def get_events(leds,timestamps,time_offset=0,num_leds=2):
     channels = []
 
     direction_signs = [1, -1]
-    led_channels = range(num_leds)
+    led_channels = range(leds.shape[0]) ## actual number of leds in case one is missing in this particular chunk. # range(num_leds)
     
     for channel in led_channels:
 
