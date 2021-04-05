@@ -46,4 +46,4 @@ To use the resulting models, try:
 2. `ephys_model = joblib.load('input_directory/sync/ephys_timebase.p')`
 3. `video_times = ephys_model.predict(ephys_times.reshape(-1,1))` (assuming times are `1D` arrays)
 4. `video_model = joblib.load('input_directory/sync/video_timebase.p')`
-5. `ephys_times = ephys_model.predict(video_times.reshape(-1,1))`
+5. `ephys_times = video_model.predict(video_times.reshape(-1,1))`
