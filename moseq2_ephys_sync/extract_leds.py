@@ -93,7 +93,7 @@ def get_led_data(frame_data_chunk,num_leds = 4,flip_horizontal=False,flip_vertic
 
     leds = []
 
-    for i in range(num_leds):
+    for i in range(len(sorting)):
 
         led_x = np.where(labeled_leds==sorting[i]+1)[0]
         led_y = np.where(labeled_leds==sorting[i]+1)[1]
