@@ -143,7 +143,7 @@ def sync(base_path):
     ####################### Make the models! ####################
 
     ephys_model = PiecewiseRegressor(verbose=True,
-                               binner=KBinsDiscretizer(n_bins=100))
+                               binner=KBinsDiscretizer(n_bins=10))
     ephys_model.fit(matches[:,0].reshape(-1, 1), matches[:,1])
 
 
@@ -167,7 +167,7 @@ def sync(base_path):
     #################################
 
     video_model = PiecewiseRegressor(verbose=True,
-                               binner=KBinsDiscretizer(n_bins=100))
+                               binner=KBinsDiscretizer(n_bins=10))
     video_model.fit(matches[:,1].reshape(-1, 1), matches[:,0])
 
 
@@ -199,5 +199,4 @@ if __name__ == "__main__" :
 
     sync(base_path)
 
-    
     
