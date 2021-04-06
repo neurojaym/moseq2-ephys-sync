@@ -44,7 +44,11 @@ def get_led_data(frame_data_chunk,num_leds = 4,flip_horizontal=False,flip_vertic
     
     frame_uint8 = np.asarray(frame_data_chunk / frame_data_chunk.max() * 255, dtype='uint8')
     
-    vary_px = frame_uint8.std(axis=0)
+    std_px = frame_uint8.std(axis=0)    
+    mean_px = frame_uint8.mean(axis=0)
+    vary_px = std_px if np.std(std_px) < np.std(mean_px) else mean_px # pick the one with the lower variance
+
+    
 
     
     edges = canny(vary_px/255.) ## find the edges
