@@ -5,6 +5,7 @@ import os
 import numpy as np
 from skimage.feature import canny
 from scipy import ndimage as ndi
+from skimage.filters import threshold_otsu
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
@@ -48,10 +49,13 @@ def get_led_data(frame_data_chunk,num_leds = 4,flip_horizontal=False,flip_vertic
     mean_px = frame_uint8.mean(axis=0)
     vary_px = std_px if np.std(std_px) < np.std(mean_px) else mean_px # pick the one with the lower variance
 
-    
+    ## threshold the image to get rid of edge noise:
+    thresh = threshold_otsu(vary_px)
+    thresh_px = np.copy(vary_px)
+    thresh_px[thresh_px<thresh] = 0
 
     
-    edges = canny(vary_px/255.) ## find the edges
+    edges = canny(thresh_px/255.) ## find the edges
     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
     
