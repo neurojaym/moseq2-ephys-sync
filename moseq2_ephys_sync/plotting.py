@@ -84,7 +84,7 @@ def plot_video_frame(frame,save_path):
     plt.imshow(frame)
     plt.colorbar()
 
-    f.savefig('%s/frame_std.pdf' % save_path)
+    f.savefig(save_path)
 
     plt.close(f)
 

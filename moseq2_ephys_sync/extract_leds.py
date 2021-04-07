@@ -32,7 +32,8 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     return out
 
 
-def get_led_data(frame_data_chunk,num_leds = 4,flip_horizontal=False,flip_vertical=False,sort_by=None,save_path=None):
+def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0,
+    flip_horizontal=False,flip_vertical=False,sort_by=None,save_path=None):
     
     
     ## cropping:
@@ -61,7 +62,7 @@ def get_led_data(frame_data_chunk,num_leds = 4,flip_horizontal=False,flip_vertic
     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
     
-    plot_video_frame(labeled_leds,save_path)
+    plot_video_frame(labeled_leds,'%s/frame_%d.pdf' % (save_path,chunk_num) )
 
 
     

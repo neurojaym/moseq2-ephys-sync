@@ -84,12 +84,13 @@ def sync(base_path):
                                            frames=frame_batches[i],
                                            mapping=stream_names['IR'], movie_dtype=">u2", pixel_format="gray16be",
                                           frame_size=info['dims'],timestamps=timestamps,threads=8,
-                                                          finfo=info,save_path=save_path)
+                                                          finfo=info)
 
             if i==0:
-                plot_video_frame(frame_data_chunk.std(axis=0),save_path)
+                plot_video_frame(frame_data_chunk.std(axis=0),'%s/frame_std.pdf' % save_path)
 
-            leds = get_led_data(frame_data_chunk,num_leds=4,sort_by='horizontal')
+            leds = get_led_data(frame_data_chunk=frame_data_chunk,
+                            num_leds=4,chunk_num=i,sort_by='horizontal',save_path=save_path)
             
             time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
             
