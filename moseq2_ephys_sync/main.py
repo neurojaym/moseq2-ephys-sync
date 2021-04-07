@@ -74,29 +74,36 @@ def sync(base_path):
     led_events = []
     print('num_chunks = ', num_chunks)
 
-    for i in tqdm(range(num_chunks)[0:]):
-        
-        frame_data_chunk = moseq_video.load_movie_data(depth_path,
-                                       frames=frame_batches[i],
-                                       mapping=stream_names['IR'] ,movie_dtype=">u2", pixel_format="gray16be",
-                                      frame_size=info['dims'],timestamps=timestamps,threads=8,
-                                                      finfo=info)
+    led_events_path = '%s_led_events.npz' % os.path.splitext(depth_path)[0]
 
-        if i==0:
-            plot_video_frame(frame_data_chunk,save_path)
+    if not os.path.isfile(led_events_path):
 
-        leds = get_led_data(frame_data_chunk,num_leds=4,sort_by='horizontal')
-        
-        time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
-        
-        led_events.append(get_events(leds,timestamps[frame_batches[i]],time_offset,num_leds=4))
-        
-        
-    led_events = np.concatenate(led_events)
+        for i in tqdm(range(num_chunks)[0:]):
+            
+            frame_data_chunk = moseq_video.load_movie_data(depth_path,
+                                           frames=frame_batches[i],
+                                           mapping=stream_names['IR'] ,movie_dtype=">u2", pixel_format="gray16be",
+                                          frame_size=info['dims'],timestamps=timestamps,threads=8,
+                                                          finfo=info)
 
-    ## optional: save the events for further use
-    np.savez('%s_led_events.npz' % os.path.splitext(depth_path)[0],led_events=led_events)
+            if i==0:
+                plot_video_frame(frame_data_chunk,save_path)
 
+            leds = get_led_data(frame_data_chunk,num_leds=4,sort_by='horizontal')
+            
+            time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
+            
+            led_events.append(get_events(leds,timestamps[frame_batches[i]],time_offset,num_leds=4))
+            
+            
+        led_events = np.concatenate(led_events)
+
+        ## optional: save the events for further use
+        np.savez(led_events_path,led_events=led_events)
+    
+    else:
+        led_events = np.load(led_events_path)['led_events']
+        
 
     ################################# Load the ephys TTL data #####################################
 
