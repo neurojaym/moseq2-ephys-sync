@@ -98,12 +98,12 @@ def sync(base_path):
             
             tmp_event = get_events(leds,timestamps[frame_batches[i]],time_offset,num_leds=num_leds)
 
-            num_actual_leds = len(range(num_leds)) ## i.e. what was found in this chunk
+            actual_led_nums = np.unique(tmp_event[:,1]) ## i.e. what was found in this chunk
 
-            if num_actual_leds == num_leds:
+            if np.all(actual_led_nums == range(num_leds)):
                 led_events.append(tmp_event)
             else:
-                print('Found %d LEDs found in chunk %d. Skipping... ' % (num_actual_leds,i))
+                print('Found %d LEDs found in chunk %d. Skipping... ' % (actual_led_nums,i))
 
                 
             
