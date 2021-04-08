@@ -98,7 +98,7 @@ def sync(base_path):
             
             tmp_event = get_events(leds,timestamps[frame_batches[i]],time_offset,num_leds=num_leds)
 
-            num_actual_leds = len(np.unique(tmp_event[:,1]))
+            num_actual_leds = len(range(num_leds)) ## i.e. what was found in this chunk
 
             if num_actual_leds == num_leds:
                 led_events.append(tmp_event)
