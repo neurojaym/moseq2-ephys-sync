@@ -62,6 +62,8 @@ def sync(base_path):
     nframes = info['nframes']
     chunk_size = 2000
 
+    num_leds = 4
+
     ## get frame batches like in moseq2-extract:
     frame_batches = gen_batch_sequence(info['nframes'], chunk_size,
                                            0, offset=0)
@@ -90,12 +92,20 @@ def sync(base_path):
                 plot_video_frame(frame_data_chunk.std(axis=0),'%s/frame_std.pdf' % save_path)
 
             leds = get_led_data(frame_data_chunk=frame_data_chunk,
-                            num_leds=4,chunk_num=i,sort_by='horizontal',save_path=save_path)
+                            num_leds=num_leds,chunk_num=i,sort_by='horizontal',save_path=save_path)
             
             time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
             
-            led_events.append(get_events(leds,timestamps[frame_batches[i]],time_offset,num_leds=4))
-            
+            tmp_event = get_events(leds,timestamps[frame_batches[i]],time_offset,num_leds=num_leds)
+
+            num_actual_leds = len(np.unique(tmp_event[:,1]))
+
+            if num_actual_leds == num_leds:
+                led_events.append(tmp_event)
+            else:
+                print('Found %d LEDs found in chunk %d. Skipping... ' % (num_actual_leds,i))
+
+                
             
         led_events = np.concatenate(led_events)
 
