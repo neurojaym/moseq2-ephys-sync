@@ -103,7 +103,7 @@ def sync(base_path):
             if np.all(actual_led_nums == range(num_leds)):
                 led_events.append(tmp_event)
             else:
-                print('Found %d LEDs found in chunk %d. Skipping... ' % (actual_led_nums,i))
+                print('Found %d LEDs found in chunk %d. Skipping... ' % (len(actual_led_nums),i))
 
                 
             
