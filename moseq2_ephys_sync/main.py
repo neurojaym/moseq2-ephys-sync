@@ -142,6 +142,8 @@ def sync(base_path):
     ephys_codes = np.asarray(ephys_codes)
 
 
+    np.savez('%s/codes.npz' % save_path, led_codes=led_codes, ephys_codes=ephys_codes)
+
     ## visualize a small chunk of the bit codes. do you see a match? 
     plot_code_chunk(ephys_codes,led_codes,ephys_fs,save_path)
 
