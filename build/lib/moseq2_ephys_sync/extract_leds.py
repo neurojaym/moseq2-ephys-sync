@@ -2,7 +2,11 @@
 Tools for extracting LED states from mkv files
 '''
 import os
-
+import numpy as np
+from skimage.feature import canny
+from scipy import ndimage as ndi
+from skimage.filters import threshold_otsu
+from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_matches_video_time,plot_video_frame
 
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
@@ -28,7 +32,8 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     return out
 
 
-def get_led_data(frame_data_chunk,num_leds = 4,flip_horizontal=False,flip_vertical=False,sort_by=None):
+def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0,
+    flip_horizontal=False,flip_vertical=False,sort_by=None,save_path=None):
     
     
     ## cropping:
@@ -38,24 +43,50 @@ def get_led_data(frame_data_chunk,num_leds = 4,flip_horizontal=False,flip_vertic
         print('Flipping image horizontally')
         frame_data_chunk = frame_data_chunk[:,:,::-1]
     if flip_vertical:
+        print('Flipping image vertically')
         frame_data_chunk = frame_data_chunk[:,::-1,:]
     
     frame_uint8 = np.asarray(frame_data_chunk / frame_data_chunk.max() * 255, dtype='uint8')
     
-    vary_px = frame_uint8.std(axis=0)
+    std_px = frame_uint8.std(axis=0)    
+    mean_px = frame_uint8.mean(axis=0)
+    vary_px = std_px if np.std(std_px) < np.std(mean_px) else mean_px # pick the one with the lower variance
+
+    ## threshold the image to get rid of edge noise:
+    thresh = threshold_otsu(vary_px)
+    thresh_px = np.copy(vary_px)
+    thresh_px[thresh_px<thresh] = 0
 
     
-    edges = canny(vary_px/255.) ## find the edges
+    edges = canny(thresh_px/255.) ## find the edges
     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
     
+    plot_video_frame(labeled_leds,'%s/frame_%d.pdf' % (save_path,chunk_num) )
+
+
+    
     if num_features != num_leds:
         print('OoOOoOooOooOops! Number of features (%d) did not match the number of LEDs (%d)' % (num_features,num_leds))
-    
+        
+        ## erase extra labels:
+        if num_features > num_leds:
+            
+            
+            led_size_thresh = 20
+            labels_to_erase = [label for label in np.unique(labeled_leds) if (len(np.where(labeled_leds==label)[0]) < led_size_thresh and label > 0) ]
+            
+            for erase in labels_to_erase:
+                print('Erasing extraneous label #%d' % erase)
+                labeled_leds[labeled_leds==erase] = 0
+                
+    ## assign labels to the LEDs
+    labels = [label for label in np.unique(labeled_leds) if label > 0 ]
+            
     
     ## get LED x and y positions for sorting
-    leds_xs = [np.where(labeled_leds==i+1)[1].mean() for i in range(num_leds)] 
-    leds_ys = [np.where(labeled_leds==i+1)[0].mean() for i in range(num_leds)]  
+    leds_xs = [np.where(labeled_leds==i)[1].mean() for i in labels] 
+    leds_ys = [np.where(labeled_leds==i)[0].mean() for i in labels]  
     
     if sort_by == None: ## if not specified, sort by where there's most variance    
         if np.std(leds_xs) > np.std(leds_ys): # sort leds by the x coord:
@@ -67,20 +98,18 @@ def get_led_data(frame_data_chunk,num_leds = 4,flip_horizontal=False,flip_vertic
     elif sort_by == 'horizontal':
         sorting = np.argsort(leds_xs)
     else:
-        sorting = range(4)
+        sorting = range(num_leds)
         print('Choose how to sort LEDs: vertical, horizontal, or by variance (None)')
-    
-
     
     
     led_thresh = 2e4
 
     leds = []
 
-    for i in sorting:
+    for i in range(len(sorting)):
 
-        led_x = np.where(labeled_leds==i+1)[0]
-        led_y = np.where(labeled_leds==i+1)[1]
+        led_x = np.where(labeled_leds==sorting[i]+1)[0]
+        led_y = np.where(labeled_leds==sorting[i]+1)[1]
 
         led = frame_data_chunk[:,led_x,led_y].mean(axis=1) #on/off block signals
 
@@ -108,7 +137,7 @@ def get_events(leds,timestamps,time_offset=0,num_leds=2):
     channels = []
 
     direction_signs = [1, -1]
-    led_channels = range(num_leds)
+    led_channels = range(leds.shape[0]) ## actual number of leds in case one is missing in this particular chunk. # range(num_leds)
     
     for channel in led_channels:
 
