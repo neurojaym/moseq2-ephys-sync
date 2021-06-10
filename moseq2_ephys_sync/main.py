@@ -136,7 +136,13 @@ def sync(base_path):
 
 
     ## convert the ephys TTL events to bit codes:
-    print('Assuming LED events in TTL channels 1-4...') # Assume LED events are in channels 1-4
+    
+    # # DEBUG: try swapping channels?
+    # channel_map = {-4:-1, -3:-2, -2:-3, -1:-4, 1:4, 2:3, 3:2, 4:1, -7:-7, 7:7}
+    # pdb.set_trace()
+    # channels = np.vectorize(channel_map.get)(channels)
+    
+    print('Assuming LED events in TTL channels 1-4...')
     ttl_channels = [-4,-3,-2,-1,1,2,3,4]
     ttl_bool = np.isin(channels, ttl_channels)
     ephys_events = np.vstack([ephys_timestamps[ttl_bool], abs(channels[ttl_bool])-1, np.sign(channels[ttl_bool])]).T
@@ -156,9 +162,7 @@ def sync(base_path):
                                   ephys_codes[:,1], 
                                   led_codes[:,0],
                                   led_codes[:,1],
-                                  minMatch=10,maxErr=0,remove_duplicates=True ) )
-
-    # pdb.set_trace()
+                                  minMatch=10,maxErr=0,remove_duplicates=True ))
 
     ## plot the matched codes against each other:
     plot_matched_scatter(matches,save_path)
