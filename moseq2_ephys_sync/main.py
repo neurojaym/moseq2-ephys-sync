@@ -20,6 +20,8 @@ from moseq2_ephys_sync.sync import events_to_codes, match_codes
 from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_matches_video_time,plot_video_frame
 
 
+import pdb
+
 def sync(base_path):
 
     save_path = '%s/sync/' % base_path
@@ -122,14 +124,11 @@ def sync(base_path):
     channels = np.load('%s/channel_states.npy' % ephys_ttl_path)
     ephys_timestamps = np.load('%s/timestamps.npy' % ephys_ttl_path)
 
-
-
     ephys_fs = 3e4
 
     led_fs = 30
 
     led_interval = 5 # seconds
-
 
     ## convert the LED events to bit codes:
     led_codes, latencies = events_to_codes(led_events,nchannels=4,minCodeTime=led_interval-1)
@@ -137,8 +136,11 @@ def sync(base_path):
 
 
     ## convert the ephys TTL events to bit codes:
-    ephys_events = np.vstack([ephys_timestamps[abs(channels)!=5],abs(channels[abs(channels)!=5])-1,np.sign(channels[abs(channels)!=5]) ]).T
-    ephys_codes, ephys_latencies = events_to_codes(ephys_events,nchannels=4,minCodeTime=(led_interval-1)*ephys_fs)
+    print('Assuming LED events in TTL channels 1-4...') # Assume LED events are in channels 1-4
+    ttl_channels = [-4,-3,-2,-1,1,2,3,4]
+    ttl_bool = np.isin(channels, ttl_channels)
+    ephys_events = np.vstack([ephys_timestamps[ttl_bool], abs(channels[ttl_bool])-1, np.sign(channels[ttl_bool])]).T
+    ephys_codes, ephys_latencies = events_to_codes(ephys_events, nchannels=4, minCodeTime=(led_interval-1)*ephys_fs)
     ephys_codes = np.asarray(ephys_codes)
 
 
@@ -156,6 +158,7 @@ def sync(base_path):
                                   led_codes[:,1],
                                   minMatch=10,maxErr=0,remove_duplicates=True ) )
 
+    # pdb.set_trace()
 
     ## plot the matched codes against each other:
     plot_matched_scatter(matches,save_path)

@@ -13,8 +13,10 @@ def plot_code_chunk(ephys_codes,led_codes,ephys_fs,save_path):
     f,axarr = plt.subplots(2,1,dpi=600,sharex=True)
 
     axarr[0].plot(ephys_codes[:,0]/ephys_fs,ephys_codes[:,1],label='ephys bit codes')
+    axarr[0].set_title('Ephys TTL codes')
 
     axarr[1].plot(led_codes[:,0],led_codes[:,1],label='video bit codes')
+    axarr[1].set_title('LED Codes')
 
     plt.xlim([0,200])
 
