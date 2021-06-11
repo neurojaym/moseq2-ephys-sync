@@ -1,3 +1,6 @@
+import os
+import numpy as np
+
 import numpy as np
 import pandas as pd
 import sys,os
@@ -18,7 +21,7 @@ from moseq2_ephys_sync.video import get_mkv_stream_names, get_mkv_info
 from moseq2_ephys_sync.extract_leds import gen_batch_sequence, get_led_data, get_events
 from moseq2_ephys_sync.sync import events_to_codes, match_codes
 from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_matches_video_time,plot_video_frame
-
+from moseq2_ephys_sync.rpi_utils import load_rpi_vid, get_rpi_test_rois, extract_rpi_leds, interpolate_missing_timestamps
 
 import pdb
 
@@ -44,7 +47,7 @@ def sync(base_path):
             info = json.load(f)
 
         timestamps = pd.read_csv(timestamp_path)
-        timestamps = timestamps.values[:,1].flatten()
+        timestamps = timestamps.values[:,1].flatten() # time in seconds
 
     else:
         ## get info on the depth file; we'll use this to see how many frames we have
@@ -116,8 +119,65 @@ def sync(base_path):
     
     else:
         led_events = np.load(led_events_path)['led_events']
-
         
+
+    ################################ Load the rpi video if present #################
+    
+    rpi_vid_path = glob('%s/*.mp4' % base_path )[0]
+    if not rpi_vid_path:
+        raise RuntimeError('Expected rpi video as mp4')
+    
+    # To test the rpi, we record the bucket LEDs in the rpi video. 
+    # Extract the LED signals and compare the Rpi timestamps to the open ephys timestamps.
+
+    # Start with LED extraction.
+    fps = 30
+    led_samples = 10
+    sec_per_sample = 5
+    nframes = fps*sec_per_sample*led_samples
+    led_thresh = 50
+    rpi_vid_beginning = load_rpi_vid(rpi_vid_path, num_frames=nframes) # T x M x N x C. IR LEDs are most visible in third channel (BGR maybe?)
+    leds_xs, leds_ys, sorting = get_rpi_test_rois(rpi_vid_beginning[:,:,;,2]) 
+
+    # Determine total number of frames and extract signals
+    vid_reader = skvideo.io.FFmpegReader(rpi_vid_path)
+    (totalFrames, _, _, _) = vid_reader.getShape()
+    vid_reader.close()
+    rpi_leds = extract_rpi_leds(rpi_vid_path,
+                        totalFrames=totalFrames,
+                        leds_xs=leds_xs,
+                        leds_ys=leds_ys,
+                        sorting=sorting,
+                        led_thresh=led_thresh)
+    
+    # Get rpi timestamps
+    rpi_ts_path = '%s/rpicamera_video_timestamps.csv' % base_path
+    rpi_ts = np.genfromtxt(rpi_ts_path, delimiter=',') # first col is frame times, second col is TTL trigger times
+    if not rpi_ts:
+        raise RuntimeError('Expected rpi timestamps as csv')
+    rpi_frame_ts = (rpi_ts[:,0] - rpi_ts[0,0]) /1e6 # start at 0 and convert to sec
+    rpi_ttl_ts = (rpi_ts[:,1] - rpi_ts[0,1]) /1e6 
+
+    # For the purposes of testing, decode the LED pattern with the ground truth times
+    rpi_frame_ts = interpolate_missing_timestamps(rpi_frame_ts, fps=30)
+    rpi_frame_ts = interpolate_missing_timestamps(rpi_frame_ts, fps=30)
+    rpi_frame_ts = rpi_frame_ts.ravel() 
+    rpi_led_events = get_events(leds, rpi_frame_ts, time_offset=0, num_leds=4)
+
+    ######### (General case) Fit a linear piecewise model to go from rpi frame to ephys TTL #############
+    # First get rpi signal from ephys TTL
+    ephys_fs = 3e4
+    ephys_ttl_path = glob('%s/**/TTL_*/' % base_path,recursive = True)[0]
+    channels = np.load('%s/channel_states.npy' % ephys_ttl_path)
+    ephys_timestamps = np.load('%s/timestamps.npy' % ephys_ttl_path) / ephys_fs # in seconds
+    print('Assuming rpi ttl is in ttl channel 7...')
+    rpi_ttl_bool = np.isin(channels, [-7,7])
+    rpi_ttl_events = np.vstack([ephys_timestamps[rpi_ttl_bool], channels[rpi_ttl_bool], np.sign(channels[rpi_ttl_bool])]).T
+
+    # Get rpi's version of its ttl events
+    rpi_ttl_ts
+
+
     ################################# Load the ephys TTL data #####################################
 
     ephys_ttl_path = glob('%s/**/TTL_*/' % base_path,recursive = True)[0]
@@ -219,6 +279,7 @@ if __name__ == "__main__" :
 
     parser.add_argument('-path', type=str)
     
+
     settings = parser.parse_args(); 
 
     base_path = settings.path #'/n/groups/datta/maya/ofa-snr/mj-snr-01/mj_snr_01_2021-03-24_11-06-33/'
