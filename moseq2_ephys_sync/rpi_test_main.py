@@ -24,6 +24,7 @@ from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, pl
 from moseq2_ephys_sync.rpi_utils import load_rpi_vid, get_rpi_test_rois, extract_rpi_leds, interpolate_missing_timestamps
 
 import pdb
+import skvideo.io
 
 def sync(base_path):
 
@@ -121,8 +122,11 @@ def sync(base_path):
         led_events = np.load(led_events_path)['led_events']
         
 
-    ################################ Load the rpi video if present #################
+    ################################ RPI TEST with video of the sync LEDs #################
     
+    # Re-extract LED signal if already done?
+    redo_led_extract = False
+
     rpi_vid_path = glob('%s/*.mp4' % base_path )[0]
     if not rpi_vid_path:
         raise RuntimeError('Expected rpi video as mp4')
@@ -130,14 +134,14 @@ def sync(base_path):
     # To test the rpi, we record the bucket LEDs in the rpi video. 
     # Extract the LED signals and compare the Rpi timestamps to the open ephys timestamps.
 
-    # Start with LED extraction.
+    # Take a small portion of the rpi video and find the LED ROIs
     fps = 30
-    led_samples = 10
+    led_samples = 4
     sec_per_sample = 5
     nframes = fps*sec_per_sample*led_samples
-    led_thresh = 50
     rpi_vid_beginning = load_rpi_vid(rpi_vid_path, num_frames=nframes) # T x M x N x C. IR LEDs are most visible in third channel (BGR maybe?)
-    leds_xs, leds_ys, sorting = get_rpi_test_rois(rpi_vid_beginning[:,:,;,2]) 
+    leds_xs, leds_ys, _ = get_rpi_test_rois(rpi_vid_beginning[:,:,:,2]) 
+    sorting = np.array([0,1,2,3]) # lazy manual sort
 
     # Determine total number of frames and extract signals
     vid_reader = skvideo.io.FFmpegReader(rpi_vid_path)
@@ -148,46 +152,32 @@ def sync(base_path):
                         leds_xs=leds_xs,
                         leds_ys=leds_ys,
                         sorting=sorting,
-                        led_thresh=led_thresh)
+                        base_path=base_path,
+                        redo_led_extract=redo_led_extract)
     
     # Get rpi timestamps
     rpi_ts_path = '%s/rpicamera_video_timestamps.csv' % base_path
     rpi_ts = np.genfromtxt(rpi_ts_path, delimiter=',') # first col is frame times, second col is TTL trigger times
-    if not rpi_ts:
-        raise RuntimeError('Expected rpi timestamps as csv')
-    rpi_frame_ts = (rpi_ts[:,0] - rpi_ts[0,0]) /1e6 # start at 0 and convert to sec
-    rpi_ttl_ts = (rpi_ts[:,1] - rpi_ts[0,1]) /1e6 
+    rpi_frame_ts = (rpi_ts[:,0] - rpi_ts[0,0]) /1e6 # start at 0, convert to sec
+    rpi_self_ttl_ts = (rpi_ts[:,1] - rpi_ts[0,1]) /1e6 # these are the TTL signals shared with OE
 
     # For the purposes of testing, decode the LED pattern with the ground truth times
-    rpi_frame_ts = interpolate_missing_timestamps(rpi_frame_ts, fps=30)
-    rpi_frame_ts = interpolate_missing_timestamps(rpi_frame_ts, fps=30)
+    true_fps = totalFrames / (rpi_ts[0,0] - rpi_ts[-1,0])
+    orig_rpi_ts = rpi_ts.copy()
+    rpi_frame_ts = interpolate_missing_timestamps(rpi_frame_ts, fps=true_fps)
+    rpi_frame_ts = interpolate_missing_timestamps(rpi_frame_ts, fps=true_fps)
     rpi_frame_ts = rpi_frame_ts.ravel() 
-    rpi_led_events = get_events(leds, rpi_frame_ts, time_offset=0, num_leds=4)
-
-    ######### (General case) Fit a linear piecewise model to go from rpi frame to ephys TTL #############
-    # First get rpi signal from ephys TTL
-    ephys_fs = 3e4
-    ephys_ttl_path = glob('%s/**/TTL_*/' % base_path,recursive = True)[0]
-    channels = np.load('%s/channel_states.npy' % ephys_ttl_path)
-    ephys_timestamps = np.load('%s/timestamps.npy' % ephys_ttl_path) / ephys_fs # in seconds
-    print('Assuming rpi ttl is in ttl channel 7...')
-    rpi_ttl_bool = np.isin(channels, [-7,7])
-    rpi_ttl_events = np.vstack([ephys_timestamps[rpi_ttl_bool], channels[rpi_ttl_bool], np.sign(channels[rpi_ttl_bool])]).T
-
-    # Get rpi's version of its ttl events
-    rpi_ttl_ts
-
+    rpi_led_events = get_events(rpi_leds, rpi_frame_ts, time_offset=0, num_leds=4)
+    rpi_led_codes, _ = events_to_codes(rpi_led_events, nchannels=4, minCodeTime=4)
+    rpi_led_codes = np.asarray(rpi_led_codes)
 
     ################################# Load the ephys TTL data #####################################
 
     ephys_ttl_path = glob('%s/**/TTL_*/' % base_path,recursive = True)[0]
     channels = np.load('%s/channel_states.npy' % ephys_ttl_path)
     ephys_timestamps = np.load('%s/timestamps.npy' % ephys_ttl_path)
-
     ephys_fs = 3e4
-
     led_fs = 30
-
     led_interval = 5 # seconds
 
     ## convert the LED events to bit codes:
@@ -196,12 +186,6 @@ def sync(base_path):
 
 
     ## convert the ephys TTL events to bit codes:
-    
-    # # DEBUG: try swapping channels?
-    # channel_map = {-4:-1, -3:-2, -2:-3, -1:-4, 1:4, 2:3, 3:2, 4:1, -7:-7, 7:7}
-    # pdb.set_trace()
-    # channels = np.vectorize(channel_map.get)(channels)
-    
     print('Assuming LED events in TTL channels 1-4...')
     ttl_channels = [-4,-3,-2,-1,1,2,3,4]
     ttl_bool = np.isin(channels, ttl_channels)
@@ -213,8 +197,12 @@ def sync(base_path):
     np.savez('%s/codes.npz' % save_path, led_codes=led_codes, ephys_codes=ephys_codes)
 
     ## visualize a small chunk of the bit codes. do you see a match? 
-    plot_code_chunk(ephys_codes,led_codes,ephys_fs,save_path)
-
+    fname = 'ttl_mkv_codes'
+    plot_code_chunk(ephys_codes,led_codes,ephys_fs,fname,save_path)
+    
+    ## Same for Rpi test
+    fname = 'ttl_raw_rpi_codes'
+    plot_code_chunk(ephys_codes,rpi_led_codes,ephys_fs,fname,save_path)
 
     ################### Match the codes! ##########################
 
@@ -227,29 +215,44 @@ def sync(base_path):
     ## plot the matched codes against each other:
     plot_matched_scatter(matches,save_path)
 
+
+    ## General case rpi: matching with TTL pulses ##
+    rpi_oe_ttl_bool = np.isin(channels, [7])
+    rpi_ttl_matches = np.vstack([rpi_self_ttl_ts, ephys_timestamps[rpi_oe_ttl_bool]/ephys_fs]).T
+
     ####################### Make the models! ####################
 
     ephys_model = PiecewiseRegressor(verbose=True,
                                binner=KBinsDiscretizer(n_bins=10))
     ephys_model.fit(matches[:,0].reshape(-1, 1), matches[:,1])
-
-
     predicted_video_matches = ephys_model.predict(matches[:,0].reshape(-1, 1) ) ## for checking the error
-
     predicted_video_times = ephys_model.predict(ephys_codes[:,0].reshape(-1, 1) / ephys_fs ) ## for all predicted times
-
     joblib.dump(ephys_model, '%s/ephys_timebase.p' % save_path)
     print('Saved ephys model')
 
     ## how big are the differences between the matched ephys and video code times ?
     time_errors = (predicted_video_matches - matches[:,1]) 
 
-    ## plot model errors:
-    plot_model_errors(time_errors,save_path)
+    ## plot MKV / OE ephys model errors:
+    plot_model_errors(time_errors,save_path, fname='ephys_model_errors')
 
     ## plot the codes on the same time scale
     plot_matches_video_time(predicted_video_times,ephys_codes,led_codes,save_path)
 
+    ## Repeat above but for RPI / OE general case (matching with TTL pulses)
+    rpi_to_ttl_model = PiecewiseRegressor(verbose=True,
+                               binner=KBinsDiscretizer(n_bins=10))
+    rpi_to_ttl_model.fit(rpi_ttl_matches[:,0].reshape(-1, 1), rpi_ttl_matches[:,1])        
+    predicted_rpi_ttl_times = rpi_to_ttl_model.predict(rpi_ttl_matches[:,0].reshape(-1, 1))
+    plot_model_errors((predicted_rpi_ttl_times -  rpi_ttl_matches[:,1]),save_path, fname='rpi_to_OE_model_errors')
+    
+    ## Use TTL-matched times to look at syncing LEDS (verification of syncing)
+    predicted_rpi_frame_times = rpi_to_ttl_model.predict(rpi_frame_ts.reshape(-1, 1))
+    rpi_led_events = get_events(rpi_leds, predicted_rpi_frame_times, time_offset=0, num_leds=4)
+    rpi_led_codes, _ = events_to_codes(rpi_led_events, nchannels=4, minCodeTime=4)
+    rpi_led_codes = np.asarray(rpi_led_codes)
+    fname = 'ttl_fit_rpi_codes'
+    plot_code_chunk(ephys_codes,rpi_led_codes,ephys_fs,fname,save_path)
 
     #################################
 
@@ -267,8 +270,6 @@ def sync(base_path):
 
 
     print('Syncing complete. FIN')
-
-
 
 
 if __name__ == "__main__" :
