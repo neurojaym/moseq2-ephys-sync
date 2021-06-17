@@ -133,15 +133,8 @@ def sync(base_path):
     ## convert the LED events to bit codes:
     led_codes, latencies = events_to_codes(led_events,nchannels=4,minCodeTime=led_interval-1)
     led_codes = np.asarray(led_codes)
-
-
+    
     ## convert the ephys TTL events to bit codes:
-    
-    # # DEBUG: try swapping channels?
-    # channel_map = {-4:-1, -3:-2, -2:-3, -1:-4, 1:4, 2:3, 3:2, 4:1, -7:-7, 7:7}
-    # pdb.set_trace()
-    # channels = np.vectorize(channel_map.get)(channels)
-    
     print('Assuming LED events in TTL channels 1-4...')
     ttl_channels = [-4,-3,-2,-1,1,2,3,4]
     ttl_bool = np.isin(channels, ttl_channels)
