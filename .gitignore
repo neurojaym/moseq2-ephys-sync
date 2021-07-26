@@ -5,3 +5,4 @@ debugImgs/rpi_minus_oe_diffs.tiff
 build
 dist
 *.egg-info
+*.png
