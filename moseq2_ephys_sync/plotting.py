@@ -7,19 +7,28 @@ sns.set_style('ticks')
 plt.rcParams['pdf.fonttype'] = 'truetype'
 import numpy as np
 
-## visualize a small chunk of the bit codes. do you see a match? 
-def plot_code_chunk(ephys_codes,led_codes,ephys_fs,fname,save_path):
+
+def plot_code_chunk(source2_codes, led_codes, save_path, fname='match_check' ):
+    """
+    Visualize a small chunk of the bit codes. do you see a match? 
+    ---
+    Input: 
+        codes : 2d array
+        Array of reconstructed pixel clock codes where:
+            codes[:,0] = time (already converted to seconds in main script)
+            codes[:,1] = code
+            codes[:,2] = trigger channel
+        These codes are NOT offset for latencies of the triggered channel
+    """
 
     f,axarr = plt.subplots(2,1,dpi=600,sharex=True)
 
-    axarr[0].plot(ephys_codes[:,0]/ephys_fs,ephys_codes[:,1],label='ephys bit codes')
-    axarr[0].set_title('Ephys TTL codes')
+    axarr[0].plot(source2_codes[:,0], source2_codes[:,1],label='ephys bit codes')
+    axarr[0].set_title('Source2 codes')
 
     axarr[1].plot(led_codes[:,0],led_codes[:,1],label='video bit codes')
-    if fname == 'ttl_mkv_codes':
-        axarr[1].set_title('LED Codes')
-    elif fname == 'ttl_rpi_codes':
-        axarr[1].set_title('RPI LED Codes')
+    axarr[1].set_title('MKV codes')
+    
 
     plt.xlim([0,200])
     plt.xlabel('time (sec)')
@@ -50,12 +59,12 @@ def plot_matched_scatter(matches,save_path):
     plt.close(f)
 
 ## plot model errors:
-def plot_model_errors(time_errors,save_path, fname):
+def plot_model_errors(time_errors, save_path, fname='model_errors'):
 
     f = plt.figure(dpi=600)
     ax = plt.hist(time_errors)
 
-    plt.title('%.2f sec. mean abs. error in Ephys Code Times' % np.abs(np.mean(time_errors)))
+    plt.title('%.2f sec. mean abs. error in second source Times' % np.abs(np.mean(time_errors)))
     plt.xlabel('Predicted - actual matched video code times')
 
     f.savefig(f'{save_path}/{fname}.png')
