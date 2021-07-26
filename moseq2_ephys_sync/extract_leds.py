@@ -7,7 +7,7 @@ from skimage.feature import canny
 from scipy import ndimage as ndi
 from skimage.filters import threshold_otsu
 from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_matches_video_time,plot_video_frame
-
+import pdb
 
 def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     '''
@@ -32,7 +32,7 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     return out
 
 
-def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0,
+def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0, led_loc=None,
     flip_horizontal=False,flip_vertical=False,sort_by=None,save_path=None):
     
     
@@ -48,6 +48,8 @@ def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0,
     
     frame_uint8 = np.asarray(frame_data_chunk / frame_data_chunk.max() * 255, dtype='uint8')
     
+    
+
     std_px = frame_uint8.std(axis=0)    
     mean_px = frame_uint8.mean(axis=0)
     vary_px = std_px if np.std(std_px) < np.std(mean_px) else mean_px # pick the one with the lower variance
@@ -57,15 +59,44 @@ def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0,
     thresh_px = np.copy(vary_px)
     thresh_px[thresh_px<thresh] = 0
 
-    
+
     edges = canny(thresh_px/255.) ## find the edges
     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
-    
-    plot_video_frame(labeled_leds,'%s/frame_%d.pdf' % (save_path,chunk_num) )
 
+    # If too many features, first try thresholding again, excluding very low values
+    if num_features != num_leds:
+        print('Too many features, using second thresholding step...')
+        thresh2 = threshold_otsu(thresh_px[thresh_px > 5])
+        thresh_px[thresh_px < thresh2] = 0
+        edges = canny(thresh_px/255.) ## find the edges
+        filled_image = ndi.binary_fill_holes(edges) ## fill its edges
+        labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
+        # plot_video_frame(labeled_leds,'%s/frame_%d_led_labels_secondThreshold.png' % (save_path,chunk_num))
 
-    
+    # If still too many features, check for location parameter and filter by it
+    if (num_features != num_leds) and led_loc:
+        print('Too many features, using provided LED position...')
+        centers_of_mass = ndi.measurements.center_of_mass(filled_image, labeled_leds, range(1, np.unique(labeled_leds)[-1] + 1))  # exclude 0, which is background
+        centers_of_mass = [(x/filled_image.shape[0], y/filled_image.shape[1]) for (x,y) in centers_of_mass]  # normalize
+        # x is flipped, y is not
+        if led_loc == 'topright':
+            idx = np.asarray([((x < 0.5) and (y > 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'topleft':
+            idx = np.asarray([((x > 0.5) and (y > 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'bottomleft':
+            idx = np.asarray([((x > 0.5) and (y < 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'bottomright':
+            idx = np.asarray([((x < 0.5) and (y < 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        else:
+            RuntimeError('led_loc not recognized')
+        
+        # pdb.set_trace()
+        labeled_leds[~np.isin(labeled_leds, idx+1)] = 0
+        num_features = len(idx)
+        # plot_video_frame(labeled_leds,'%s/frame_%d_led_labels_locationStep.png' % (save_path,chunk_num) )
+
+    # If still too many features, remove small ones
     if num_features != num_leds:
         print('OoOOoOooOooOops! Number of features (%d) did not match the number of LEDs (%d)' % (num_features,num_leds))
         
@@ -80,6 +111,10 @@ def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0,
                 print('Erasing extraneous label #%d' % erase)
                 labeled_leds[labeled_leds==erase] = 0
                 
+
+    # Show led labels for debugging
+    plot_video_frame(labeled_leds,'%s/frame_%d_led_labels.png' % (save_path,chunk_num) )
+
     ## assign labels to the LEDs
     labels = [label for label in np.unique(labeled_leds) if label > 0 ]
             
