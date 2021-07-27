@@ -114,11 +114,12 @@ def sync(base_path, second_source='ephys_ttl', led_loc=None):
 
             actual_led_nums = np.unique(tmp_event[:,1]) ## i.e. what was found in this chunk
 
+
             if np.all(actual_led_nums == range(num_leds)):
                 mkv_led_events.append(tmp_event)
             else:
                 print('Found %d LEDs found in chunk %d. Skipping... ' % (len(actual_led_nums),i))
-
+                
                 
             
         mkv_led_events = np.concatenate(mkv_led_events)
@@ -159,27 +160,31 @@ def sync(base_path, second_source='ephys_ttl', led_loc=None):
         ino_average_fs = 1/(np.mean(np.diff(ino_timestamps)))*1000  # fs = sampling freq in Hz
         source2_codes, _ = events_to_codes(ino_events, nchannels=4, minCodeTime=(led_interval-1)*1000)  # I think as long as the column 'timestamps' in events and the minCodeTime are in the same units, it's fine (for ephys, its nsamples, for arudino, it's ms)
         source2_codes = np.asarray(source2_codes)
-        source2_fs = ino_average_fs
-        source2_times_in_seconds = source2_codes[:,0] * 1000
+        # source2_fs = ino_average_fs
+        # source2_times_in_seconds = source2_codes[:,0] / 1000  ## convert ms to sec
+        source2_codes[:,0] = source2_codes[:,0] / 1000
+        
 
     # Save the codes for use later
     np.savez('%s/codes.npz' % save_path, led_codes=mkv_led_codes, source2_codes=source2_codes)
 
     ## visualize a small chunk of the bit codes. do you see a match? 
-    plot_code_chunk(source2_codes,mkv_led_codes,source2_fs,save_path)
+    # Codes array should have times in seconds by this point
+    plot_code_chunk(source2_codes, mkv_led_codes, save_path)
 
 
     ################### Match the codes! ##########################
 
     # Returns two columns of matched event times
-    matches = np.asarray(match_codes(source2_times_in_seconds,  ## converting the source2 times to seconds for matching (led times already in seconds)
+    matches = np.asarray(match_codes(source2_codes[:,0],  ## all times should be in seconds by here
                                   source2_codes[:,1], 
                                   mkv_led_codes[:,0],
                                   mkv_led_codes[:,1],
                                   minMatch=10,maxErr=0,remove_duplicates=True ))
 
+    
     ## plot the matched codes against each other:
-    plot_matched_scatter(matches,save_path)
+    plot_matched_scatter(matches, save_path)
 
     ####################### Make the models! ####################
 
@@ -199,11 +204,11 @@ def sync(base_path, second_source='ephys_ttl', led_loc=None):
     plot_model_errors(time_errors,save_path)
 
     # Verify accuracy of all predicted times
-    predicted_video_times = source2_model.predict(source2_times_in_seconds.reshape(-1, 1) )
+    predicted_video_times = source2_model.predict(source2_codes[:,0].reshape(-1, 1) )
     plot_matches_video_time(predicted_video_times,source2_codes,mkv_led_codes,save_path)
 
     # Save
-    joblib.dump(source2_model, '%s/ephys_timebase.p' % save_path)
+    joblib.dump(source2_model, f'{save_path}/{second_source}_timebase.p')
     print('Saved ephys model')
 
 

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from glob import glob
+import pdb
 
 def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
     arduino_data = glob(f'{base_path}/{file_glob}')[0]
@@ -32,7 +33,7 @@ def list_to_events(time_list, led1, led2, led3, led4):
         Array of pixel clock events (single channel transitions) where:
             events[:,0] = times
             events[:,1] = channels (0-indexed)
-            events[:,2] = directions
+            events[:,2] = directions (1 or -1)
     """
     led_states = [led1, led2, led3, led4]
 
@@ -46,7 +47,7 @@ def list_to_events(time_list, led1, led2, led3, led4):
         events_idx = np.asarray(diffs != 0).nonzero()[0] + 1  # plus 1, because the event should be the first timepoint where it's different
         times = times.append(pd.Series(time_list[events_idx], name='times'), ignore_index=True)
         channels = channels.append(pd.Series(np.repeat(i,len(events_idx)), name='channels'), ignore_index=True)
-        directions = directions.append(pd.Series(np.sign(diffs[events_idx]), name='directions'), ignore_index=True)
+        directions = directions.append(pd.Series(np.sign(diffs[events_idx-1]), name='directions'), ignore_index=True)
     events = pd.concat([times, channels, directions], axis=1)
     sorting = np.argsort(events.loc[:,'times'])
     events = events.loc[sorting, :]
