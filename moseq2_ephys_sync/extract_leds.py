@@ -63,9 +63,9 @@ def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0, led_loc=None,
     edges = canny(thresh_px/255.) ## find the edges
     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
-
+    
     # If too many features, first try thresholding again, excluding very low values
-    if num_features != num_leds:
+    if num_features > num_leds:
         print('Too many features, using second thresholding step...')
         thresh2 = threshold_otsu(thresh_px[thresh_px > 5])
         thresh_px[thresh_px < thresh2] = 0
@@ -75,7 +75,7 @@ def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0, led_loc=None,
         # plot_video_frame(labeled_leds,'%s/frame_%d_led_labels_secondThreshold.png' % (save_path,chunk_num))
 
     # If still too many features, check for location parameter and filter by it
-    if (num_features != num_leds) and led_loc:
+    if (num_features > num_leds) and led_loc:
         print('Too many features, using provided LED position...')
         centers_of_mass = ndi.measurements.center_of_mass(filled_image, labeled_leds, range(1, np.unique(labeled_leds)[-1] + 1))  # exclude 0, which is background
         centers_of_mass = [(x/filled_image.shape[0], y/filled_image.shape[1]) for (x,y) in centers_of_mass]  # normalize
@@ -91,13 +91,20 @@ def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0, led_loc=None,
         else:
             RuntimeError('led_loc not recognized')
         
-        # pdb.set_trace()
-        labeled_leds[~np.isin(labeled_leds, idx+1)] = 0
+        # Add back one to account for background
+        idx = idx+1
+
+        # Remove non-LED labels
+        labeled_leds[~np.isin(labeled_leds, idx)] = 0
         num_features = len(idx)
-        # plot_video_frame(labeled_leds,'%s/frame_%d_led_labels_locationStep.png' % (save_path,chunk_num) )
+
+        # Ensure LEDs have labels 1,2,3,4
+        if not np.all(idx == np.array([1,2,3,4])):
+            for i,val in enumerate([1,2,3,4]):
+                labeled_leds[labeled_leds==idx[i]] = val
 
     # If still too many features, remove small ones
-    if num_features != num_leds:
+    if num_features > num_leds:
         print('OoOOoOooOooOops! Number of features (%d) did not match the number of LEDs (%d)' % (num_features,num_leds))
         
         ## erase extra labels:
@@ -185,15 +192,10 @@ def get_events(leds,timestamps,time_offset=0,num_leds=2):
             directions.append(np.repeat(direction_sign,times_of_dir.shape[0] ))
 
 
-
     times = np.hstack(times)
     channels = np.hstack(channels)
     directions = np.hstack(directions)
-    
     sorting = np.argsort(times)
-    
-    
     events = np.vstack([times[sorting],channels[sorting],directions[sorting]]).T
       
-    
     return events

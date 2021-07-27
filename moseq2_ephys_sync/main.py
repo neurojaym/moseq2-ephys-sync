@@ -114,11 +114,12 @@ def sync(base_path, second_source='ephys_ttl', led_loc=None):
 
             actual_led_nums = np.unique(tmp_event[:,1]) ## i.e. what was found in this chunk
 
+
             if np.all(actual_led_nums == range(num_leds)):
                 mkv_led_events.append(tmp_event)
             else:
                 print('Found %d LEDs found in chunk %d. Skipping... ' % (len(actual_led_nums),i))
-
+                
                 
             
         mkv_led_events = np.concatenate(mkv_led_events)
@@ -181,7 +182,7 @@ def sync(base_path, second_source='ephys_ttl', led_loc=None):
                                   mkv_led_codes[:,1],
                                   minMatch=10,maxErr=0,remove_duplicates=True ))
 
-    pdb.set_trace()
+    
     ## plot the matched codes against each other:
     plot_matched_scatter(matches, save_path)
 
