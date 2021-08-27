@@ -128,7 +128,14 @@ def sync(base_path):
 
     ephys_timestamps -= continuous_timestamps[0] 
 
+    ## need to subtract the raw traces' starting timestamp from the TTL timestamps:
+    continuous_timestamps_path = glob('%s/**/continuous/**/timestamps.npy' % base_path,recursive = True)[0] ## load the continuous stream's timestamps
+    continuous_timestamps = np.load(continuous_timestamps_path)
 
+    ephys_timestamps -= continuous_timestamps[0] 
+
+
+    
     ephys_fs = 3e4
 
     led_fs = 30
