@@ -3,7 +3,7 @@ import numpy as np
 from glob import glob
 import pdb
 
-from . import sync
+import sync
 
 def arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec):
     """
@@ -40,7 +40,12 @@ def get_col_info(spec):
 
 
 def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
-    arduino_data = glob(f'{base_path}/{file_glob}')[0]
+    arduino_data = glob(f'{base_path}/{file_glob}')
+    try:
+        arduino_data = arduino_data[0]
+    except IndexError:
+        raise FileNotFoundError("Could not find arduino data (*.txt) in specified location!")
+        
     dtype_dict = {colname: dtype for colname, dtype in zip(colnames, dtypes)}
     try:
         # Try loading the entire thing first. 
