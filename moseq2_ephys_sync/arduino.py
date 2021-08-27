@@ -11,6 +11,7 @@ def arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino
     
     """
     assert num_leds==4, "Arduino code expects 4 LED channels, other nums of channels not yet supported"
+    assert arduino_spec is not None, "Arduino source requires a spec for the column names and datatypes (see arg arduino_spec)"
     arduino_colnames, arduino_dtypes = get_col_info(arduino_spec)
     ino_data = load_arduino_data(base_path, arduino_colnames, arduino_dtypes, file_glob='*.txt')
     ino_timestamps = ino_data.time  # these are in milliseconds
