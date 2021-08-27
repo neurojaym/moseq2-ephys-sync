@@ -9,27 +9,6 @@ from skimage.filters import threshold_otsu
 from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_matches_video_time,plot_video_frame
 import pdb
 
-def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
-    '''
-    Generates batches used to chunk videos prior to extraction.
-
-    Parameters
-    ----------
-    nframes (int): total number of frames
-    chunk_size (int): desired chunk size
-    overlap (int): number of overlapping frames
-    offset (int): frame offset
-
-    Returns
-    -------
-    Yields list of batches
-    '''
-
-    seq = range(offset, nframes)
-    out = []
-    for i in range(0, len(seq) - overlap, chunk_size - overlap):
-        out.append(seq[i:i + chunk_size])
-    return out
 
 
 def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0, led_loc=None,
@@ -65,14 +44,14 @@ def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0, led_loc=None,
     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
     
     # If too many features, first try thresholding again, excluding very low values
-    if num_features > num_leds:
-        print('Too many features, using second thresholding step...')
-        thresh2 = threshold_otsu(thresh_px[thresh_px > 5])
-        thresh_px[thresh_px < thresh2] = 0
-        edges = canny(thresh_px/255.) ## find the edges
-        filled_image = ndi.binary_fill_holes(edges) ## fill its edges
-        labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
-        # plot_video_frame(labeled_leds,'%s/frame_%d_led_labels_secondThreshold.png' % (save_path,chunk_num))
+    # if num_features > num_leds:
+    #     print('Too many features, using second thresholding step...')
+    #     thresh2 = threshold_otsu(thresh_px[thresh_px > 5])
+    #     thresh_px[thresh_px < thresh2] = 0
+    #     edges = canny(thresh_px/255.) ## find the edges
+    #     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
+    #     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
+    #     # plot_video_frame(labeled_leds,'%s/frame_%d_led_labels_secondThreshold.png' % (save_path,chunk_num))
 
     # If still too many features, check for location parameter and filter by it
     if (num_features > num_leds) and led_loc:
@@ -100,6 +79,7 @@ def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0, led_loc=None,
 
         # Ensure LEDs have labels 1,2,3,4
         if not np.all(idx == np.array([1,2,3,4])):
+            # pdb.set_trace()
             for i,val in enumerate([1,2,3,4]):
                 labeled_leds[labeled_leds==idx[i]] = val
 
