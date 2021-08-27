@@ -5,16 +5,16 @@ import argparse
 from mlinsights.mlmodel import PiecewiseRegressor
 from sklearn.preprocessing import KBinsDiscretizer
 
-from . import mkv, arduino, ttl, sync, plotting
+import mkv, arduino, ttl, sync, plotting
 
 import pdb
 
 """
 TODO:
 
--- create workflows for each source and separate from main function
+-- add ROIs capability to MKV workflow
+-- refactor extract_leds to work with various other videos
 
--- remove video, replaced with functions in mkv
 """
 
 
@@ -44,12 +44,11 @@ def main_function(base_path, output_dir_name, first_source, second_source, led_l
     print(f'Running sync on {base_path} with {first_source} as first source and {second_source} as second source.')
 
 
-    ## SETUP ##
+    #### SETUP ####
     # Built-in params (should make dynamic)
     mkv_chunk_size = 2000
     num_leds = 4
     ephys_fs = 3e4  # sampling rate in Hz
-
 
     # Set up save path
     save_path = f'{base_path}/{output_dir_name}/'
@@ -63,7 +62,7 @@ def main_function(base_path, output_dir_name, first_source, second_source, led_l
 
 
 
-    ## INDIVIDUAL DATA STREAM WORKFLOWS ##
+    #### INDIVIDUAL DATA STREAM WORKFLOWS ####
 
     # Deal with first source
     if first_source == 'ttl':
@@ -72,28 +71,26 @@ def main_function(base_path, output_dir_name, first_source, second_source, led_l
         first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc)
     elif first_source == 'arduino':
         first_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
-    
 
     # Deal with second source
     if second_source == 'ttl':
         second_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
-    elif first_source == 'mkv':
-        first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc)
-    elif first_source == 'arduino':
-        first_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
-        
+    elif second_source == 'mkv':
+        second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc)
+    elif second_source == 'arduino':
+        second_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
         
     # Save the codes for use later
     np.savez('%s/codes.npz' % save_path, first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
 
-    ## visualize a small chunk of the bit codes. do you see a match? 
+    # Visualize a small chunk of the bit codes. do you see a match? 
     # Codes array should have times in seconds by this point
     plotting.plot_code_chunk(first_source_led_codes, second_source_led_codes, save_path)
 
 
 
 
-    ## SYNCING :D ##
+    #### SYNCING :D ####
 
     # Returns two columns of matched event times
     matches = np.asarray(sync.match_codes(first_source_led_codes[:,0],  ## all times should be in seconds by here
@@ -102,11 +99,13 @@ def main_function(base_path, output_dir_name, first_source, second_source, led_l
                                   second_source_led_codes[:,1],
                                   minMatch=10,maxErr=0,remove_duplicates=True ))
 
-    
-    ## plot the matched codes against each other:
+    ## Plot the matched codes against each other:
     plotting.plot_matched_scatter(matches, save_path)
 
-    ####################### Make the models! ####################
+
+
+
+    #### Make the models! ####
 
     # Rename for clarity.
     ground_truth_source1_event_times = matches[:,0]
@@ -160,7 +159,6 @@ if __name__ == "__main__" :
     parser.add_argument('-path', type=str)  # path to data
     parser.add_argument('-o', '--output_dir_name', type=str, default='sync')  # name of output folder within path
     parser.add_argument('-s1', '--first_source', type=str)  # ttl, mkv, arduino (txt) 
-    parser.add_argument('-s2', '--second_source', type=str)  # ttl, mkv, arduino 
     parser.add_argument('-s2', '--second_source', type=str)  # ttl, mkv, arduino 
     parser.add_argument('--led_loc', type=str)
     parser.add_argument('--led_blink_interval', type=int, default=5)  # default blink every 5 seconds
