@@ -126,7 +126,7 @@ def sync(base_path):
     continuous_timestamps_path = glob('%s/**/continuous/**/timestamps.npy' % base_path,recursive = True)[0] ## load the continuous stream's timestamps
     continuous_timestamps = np.load(continuous_timestamps_path)
 
-    ephys_timestamps -= continuous_timestamps[0] 
+    ephys_timestamps -= continuous_timestamps[0] ## subract the first timestamp from all TTLs; this way continuous ephys can safely start at 0 samples or seconds
 
 
     ephys_fs = 3e4
