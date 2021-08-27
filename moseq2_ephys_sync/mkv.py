@@ -79,9 +79,9 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
                 plotting.plot_video_frame(frame_data_chunk.std(axis=0),'%s/frame_std.pdf' % save_path)
 
             if led_rois is not None:
-                leds = extract_leds.get_led_data_from_rois(frame_data_chunk=frame_data_chunk, rois=rois, save_path=save_path)
+                leds = extract_leds.get_led_data_from_rois(frame_data_chunk=frame_data_chunk, rois=led_rois, save_path=save_path)
             else:
-                leds = extract_leds.get_led_data(frame_data_chunk=frame_data_chunk,
+                leds = extract_leds.get_led_data_with_stds(frame_data_chunk=frame_data_chunk,
                                 num_leds=num_leds,chunk_num=i, led_loc=led_loc, sort_by='horizontal',save_path=save_path)
             
             time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]

@@ -1,6 +1,7 @@
 '''
-Tools for extracting LED states from mkv files
+Tools for extracting LED states from video files
 '''
+
 import os
 import numpy as np
 from skimage.feature import canny
@@ -10,13 +11,47 @@ from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, pl
 import pdb
 
 
+def get_led_data_from_rois(frame_data_chunk, rois, led_thresh=2e4, save_path=None):
+    """
+    Given pre-determined rois for LEDs, return sequences of ons and offs
+    Inputs:
+        frame_data_chunk: array-like of video data (typically from moseq_video.load_movie_data() but could be any)
+        rois (list): ordered list of rois [{specify ROI format, eg x1 x2 y1 y2}] to get LED data from
+        led_thresh (int): value above which LEDs are considered on. Default 2e4. In the k4a recorder, LEDs that are on register as 65535 = 6.5e4, off ones are roughly 1000.
+        save_path (str): where to save plots for debugging if desired
+    Returns:
+        leds (np.array): (num leds) x (num frames) array of 0s and 1s, indicating if LED is above or below threshold (ie, on or off)
+    """
 
-def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0, led_loc=None,
-    flip_horizontal=False,flip_vertical=False,sort_by=None,save_path=None):
+    leds = []
+
+    for i in range(len(rois)):
+
+        led_x = 2# {get x vals}
+        led_y = 2# {get y vals}
+
+        led = frame_data_chunk[:,led_x,led_y].mean(axis=1) #on/off block signals
+
+        led_on = np.where(np.diff(led) > led_thresh)[0]   #rise indices
+        led_off = np.where(np.diff(led) < -led_thresh)[0]   #fall indices
+
+
+        led_vec = np.zeros(frame_data_chunk.shape[0])
+        led_vec[led_on] = 1
+        led_vec[led_off] = -1
+
+        leds.append(led_vec)
+
+    leds = np.vstack(leds) #spiky differenced signals to extract times 
+
+    return leds
+
+
+
+
+def get_led_data_with_stds(frame_data_chunk, num_leds = 4, chunk_num=0, led_loc=None,
+    flip_horizontal=False, flip_vertical=False, sort_by=None, save_path=None):
     
-    
-    ## cropping:
-    #frame_data_chunk = frame_data_chunk[:,:,:-100]
     
     if flip_horizontal:
         print('Flipping image horizontally')
@@ -27,23 +62,27 @@ def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0, led_loc=None,
     
     frame_uint8 = np.asarray(frame_data_chunk / frame_data_chunk.max() * 255, dtype='uint8')
     
-    
 
     std_px = frame_uint8.std(axis=0)    
     mean_px = frame_uint8.mean(axis=0)
     vary_px = std_px if np.std(std_px) < np.std(mean_px) else mean_px # pick the one with the lower variance
 
-    ## threshold the image to get rid of edge noise:
+    # Initial thresholding
     thresh = threshold_otsu(vary_px)
     thresh_px = np.copy(vary_px)
     thresh_px[thresh_px<thresh] = 0
 
-
+    # Initial regions
     edges = canny(thresh_px/255.) ## find the edges
     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
     
-    # If too many features, first try thresholding again, excluding very low values
+    
+    # If too many features, try a series of steps
+
+
+    # 
+    # first try thresholding again, excluding very low values
     # if num_features > num_leds:
     #     print('Too many features, using second thresholding step...')
     #     thresh2 = threshold_otsu(thresh_px[thresh_px > 5])
