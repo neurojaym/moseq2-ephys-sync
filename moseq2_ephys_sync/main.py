@@ -18,12 +18,13 @@ TODO:
 """
 
 
-def main_function(base_path, first_source, second_source, led_loc=None, led_blink_interval=5, arduino_spec=None, overwrite_models=False):
+def main_function(base_path, output_dir_name, first_source, second_source, led_loc=None, led_blink_interval=5, arduino_spec=None, overwrite_models=False):
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times
     ----
     Inputs:
         base_path (str): path to the .mkv and any other files needed
+        output_dir: path to save output models and plots. Default: {base_path}/sync.
         first_source (str): 'ttl', 'mkv', 'arduino', or 'basler'. Source to be predicted.
             ttl: looks for open ephys data in __ format
             mkv: looks for an MKV file recorded with the k4a recorder
@@ -51,7 +52,7 @@ def main_function(base_path, first_source, second_source, led_loc=None, led_blin
 
 
     # Set up save path
-    save_path = '%s/sync/' % base_path
+    save_path = f'{base_path}/{output_dir_name}/'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
@@ -157,21 +158,24 @@ if __name__ == "__main__" :
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-path', type=str)  # path to data
-    parser.add_argument('--first_source', type=str)  # ttl, mkv, arduino (txt) 
-    parser.add_argument('--second_source', type=str)  # ttl, mkv, arduino 
+    parser.add_argument('-o', '--output_dir_name', type=str, default='sync')  # name of output folder within path
+    parser.add_argument('-s1', '--first_source', type=str)  # ttl, mkv, arduino (txt) 
+    parser.add_argument('-s2', '--second_source', type=str)  # ttl, mkv, arduino 
+    parser.add_argument('-s2', '--second_source', type=str)  # ttl, mkv, arduino 
     parser.add_argument('--led_loc', type=str)
     parser.add_argument('--led_blink_interval', type=int, default=5)  # default blink every 5 seconds
-    parser.add_argument('--arduino_spec', type=str)  # specifiy cols in arduino text file
-    parser.add_argument('--overwrite_models', type=int, default=0)  # overwrites old models if True (1)
+    parser.add_argument('--arduino_spec', type=str, help="Currently supported: fictive_olfaction, odor_on_wheel, ")  # specifiy cols in arduino text file
+    parser.add_argument('--overwrite_models', action="store_true")  # overwrites old models if True (1)
+    
     settings = parser.parse_args(); 
 
-    base_path = settings.path
-    first_source = settings.first_source
-    second_source = settings.second_source
-    led_loc = settings.led_loc
-    led_blink_interval = settings.led_blink_interval
-    arduino_spec = settings.arduino_spec
-    overwrite_models = bool(settings.overwrite_models)
-    main_function(base_path, first_source, second_source, led_loc, led_blink_interval, arduino_spec, overwrite_models)
+    main_function(base_path=settings.path,
+                output_dir_name=settings.output_dir_name,
+                first_source=settings.first_source,
+                second_source=settings.second_source,
+                led_loc=settings.led_loc,
+                led_blink_interval=settings.led_blink_interval,
+                arduino_spec=settings.arduino_spec,
+                overwrite_models=settings.overwrite_models)
 
     
