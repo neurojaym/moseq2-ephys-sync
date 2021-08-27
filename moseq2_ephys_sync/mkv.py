@@ -11,9 +11,9 @@ import json
 import moseq2_extract.io.video as moseq_video
 import subprocess
 
-from . import plotting, extract_leds
+import plotting, extract_leds, sync
 
-def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size=2000, led_loc=None):
+def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size=2000, led_loc=None, led_rois=None):
     """
     Workflow to extract led codes from an MKV file
     
@@ -78,8 +78,11 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
             if i==0:
                 plotting.plot_video_frame(frame_data_chunk.std(axis=0),'%s/frame_std.pdf' % save_path)
 
-            leds = extract_leds.get_led_data(frame_data_chunk=frame_data_chunk,
-                            num_leds=num_leds,chunk_num=i, led_loc=led_loc, sort_by='horizontal',save_path=save_path)
+            if led_rois is not None:
+                leds = extract_leds.get_led_data_from_rois(frame_data_chunk=frame_data_chunk, rois=rois, save_path=save_path)
+            else:
+                leds = extract_leds.get_led_data(frame_data_chunk=frame_data_chunk,
+                                num_leds=num_leds,chunk_num=i, led_loc=led_loc, sort_by='horizontal',save_path=save_path)
             
             time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
             
@@ -106,7 +109,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
         
 
     ############### Convert the LED events to bit codes ############### 
-    mkv_led_codes, latencies = extract_leds.events_to_codes(mkv_led_events, nchannels=4, minCodeTime=(led_blink_interval-1))
+    mkv_led_codes, latencies = sync.events_to_codes(mkv_led_events, nchannels=4, minCodeTime=(led_blink_interval-1))
     mkv_led_codes = np.asarray(mkv_led_codes)
 
     return mkv_led_codes
