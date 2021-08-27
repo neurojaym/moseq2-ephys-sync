@@ -1,24 +1,9 @@
-from datetime import time
 import numpy as np
-import pandas as pd
-import sys
 import os
-from tqdm import tqdm
-import subprocess
-from glob import glob
 import joblib
 import argparse
-import json
-
 from mlinsights.mlmodel import PiecewiseRegressor
-from sklearn.tree import DecisionTreeRegressor
 from sklearn.preprocessing import KBinsDiscretizer
-
-import moseq2_extract.io.video as moseq_video
-
-# from moseq2_ephys_sync.video import get_mkv_stream_names, get_mkv_info
-# from moseq2_ephys_sync.extract_leds import gen_batch_sequence, get_led_data, get_events
-# from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_matches_video_time,plot_video_frame
 
 from . import mkv, arduino, ttl, sync, plotting
 
@@ -33,7 +18,7 @@ TODO:
 """
 
 
-def main_function(base_path, first_source, second_source, led_loc=None, led_blink_interval=5, arduino_spec=None):
+def main_function(base_path, first_source, second_source, led_loc=None, led_blink_interval=5, arduino_spec=None, overwrite_models=False):
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times
     ----
@@ -70,30 +55,40 @@ def main_function(base_path, first_source, second_source, led_loc=None, led_blin
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
+    # Check if models already exist, only over-write if requested
+    model_exists_bool = os.path.exists(f'{save_path}/{first_source}_from_{second_source}.p') or os.path.exists(f'{save_path}/{second_source}_from_{first_source}.p')
+    if model_exists_bool and not overwrite_models:
+        raise RuntimeError("Models already exist and overwrite_models is false!")
+
 
 
     ## INDIVIDUAL DATA STREAM WORKFLOWS ##
 
     # Deal with first source
-    if first_source == 'mkv':
+    if first_source == 'ttl':
+        first_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
+    elif first_source == 'mkv':
         first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc)
     elif first_source == 'arduino':
         first_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
     
 
-
     # Deal with second source
     if second_source == 'ttl':
         second_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
+    elif first_source == 'mkv':
+        first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc)
+    elif first_source == 'arduino':
+        first_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
         
         
-
     # Save the codes for use later
     np.savez('%s/codes.npz' % save_path, first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
 
     ## visualize a small chunk of the bit codes. do you see a match? 
     # Codes array should have times in seconds by this point
     plotting.plot_code_chunk(first_source_led_codes, second_source_led_codes, save_path)
+
 
 
 
@@ -149,7 +144,7 @@ def main_function(base_path, first_source, second_source, led_loc=None, led_blin
         plotting.plot_matches_video_time(all_predicted_times, t2, t1, save_path)
 
         # Save
-        joblib.dump(mdl, f'{save_path}/{n2}_timebase.p')
+        joblib.dump(mdl, f'{save_path}/{n1}_from_{n2}.p')
         print(f'Saved model that predicts {n1} from {n2}')
 
 
@@ -167,7 +162,7 @@ if __name__ == "__main__" :
     parser.add_argument('--led_loc', type=str)
     parser.add_argument('--led_blink_interval', type=int, default=5)  # default blink every 5 seconds
     parser.add_argument('--arduino_spec', type=str)  # specifiy cols in arduino text file
-
+    parser.add_argument('--overwrite_models', type=int, default=0)  # overwrites old models if True (1)
     settings = parser.parse_args(); 
 
     base_path = settings.path
@@ -176,7 +171,7 @@ if __name__ == "__main__" :
     led_loc = settings.led_loc
     led_blink_interval = settings.led_blink_interval
     arduino_spec = settings.arduino_spec
-
-    main_function(base_path, first_source, second_source, led_loc, led_blink_interval, arduino_spec)
+    overwrite_models = bool(settings.overwrite_models)
+    main_function(base_path, first_source, second_source, led_loc, led_blink_interval, arduino_spec, overwrite_models)
 
     
