@@ -1,43 +1,57 @@
 '''
-Tools for extracting LED states from mkv files
+Tools for extracting LED states from video files
 '''
+
 import os
 import numpy as np
 from skimage.feature import canny
 from scipy import ndimage as ndi
 from skimage.filters import threshold_otsu
 from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_matches_video_time,plot_video_frame
+import pdb
 
 
-def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
-    '''
-    Generates batches used to chunk videos prior to extraction.
+def get_led_data_from_rois(frame_data_chunk, rois, led_thresh=2e4, save_path=None):
+    """
+    Given pre-determined rois for LEDs, return sequences of ons and offs
+    Inputs:
+        frame_data_chunk: array-like of video data (typically from moseq_video.load_movie_data() but could be any)
+        rois (list): ordered list of rois [{specify ROI format, eg x1 x2 y1 y2}] to get LED data from
+        led_thresh (int): value above which LEDs are considered on. Default 2e4. In the k4a recorder, LEDs that are on register as 65535 = 6.5e4, off ones are roughly 1000.
+        save_path (str): where to save plots for debugging if desired
+    Returns:
+        leds (np.array): (num leds) x (num frames) array of 0s and 1s, indicating if LED is above or below threshold (ie, on or off)
+    """
 
-    Parameters
-    ----------
-    nframes (int): total number of frames
-    chunk_size (int): desired chunk size
-    overlap (int): number of overlapping frames
-    offset (int): frame offset
+    leds = []
 
-    Returns
-    -------
-    Yields list of batches
-    '''
+    for i in range(len(rois)):
 
-    seq = range(offset, nframes)
-    out = []
-    for i in range(0, len(seq) - overlap, chunk_size - overlap):
-        out.append(seq[i:i + chunk_size])
-    return out
+        led_x = 2# {get x vals}
+        led_y = 2# {get y vals}
+
+        led = frame_data_chunk[:,led_x,led_y].mean(axis=1) #on/off block signals
+
+        led_on = np.where(np.diff(led) > led_thresh)[0]   #rise indices
+        led_off = np.where(np.diff(led) < -led_thresh)[0]   #fall indices
 
 
-def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0,
-    flip_horizontal=False,flip_vertical=False,sort_by=None,save_path=None):
+        led_vec = np.zeros(frame_data_chunk.shape[0])
+        led_vec[led_on] = 1
+        led_vec[led_off] = -1
+
+        leds.append(led_vec)
+
+    leds = np.vstack(leds) #spiky differenced signals to extract times 
+
+    return leds
+
+
+
+
+def get_led_data_with_stds(frame_data_chunk, num_leds = 4, chunk_num=0, led_loc=None,
+    flip_horizontal=False, flip_vertical=False, sort_by=None, save_path=None):
     
-    
-    ## cropping:
-    #frame_data_chunk = frame_data_chunk[:,:,:-100]
     
     if flip_horizontal:
         print('Flipping image horizontally')
@@ -48,25 +62,68 @@ def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0,
     
     frame_uint8 = np.asarray(frame_data_chunk / frame_data_chunk.max() * 255, dtype='uint8')
     
+
     std_px = frame_uint8.std(axis=0)    
     mean_px = frame_uint8.mean(axis=0)
     vary_px = std_px if np.std(std_px) < np.std(mean_px) else mean_px # pick the one with the lower variance
 
-    ## threshold the image to get rid of edge noise:
+    # Initial thresholding
     thresh = threshold_otsu(vary_px)
     thresh_px = np.copy(vary_px)
     thresh_px[thresh_px<thresh] = 0
 
-    
+    # Initial regions
     edges = canny(thresh_px/255.) ## find the edges
     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
     
-    plot_video_frame(labeled_leds,'%s/frame_%d.pdf' % (save_path,chunk_num) )
-
-
     
-    if num_features != num_leds:
+    # If too many features, try a series of steps
+
+
+    # 
+    # first try thresholding again, excluding very low values
+    # if num_features > num_leds:
+    #     print('Too many features, using second thresholding step...')
+    #     thresh2 = threshold_otsu(thresh_px[thresh_px > 5])
+    #     thresh_px[thresh_px < thresh2] = 0
+    #     edges = canny(thresh_px/255.) ## find the edges
+    #     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
+    #     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
+    #     # plot_video_frame(labeled_leds,'%s/frame_%d_led_labels_secondThreshold.png' % (save_path,chunk_num))
+
+    # If still too many features, check for location parameter and filter by it
+    if (num_features > num_leds) and led_loc:
+        print('Too many features, using provided LED position...')
+        centers_of_mass = ndi.measurements.center_of_mass(filled_image, labeled_leds, range(1, np.unique(labeled_leds)[-1] + 1))  # exclude 0, which is background
+        centers_of_mass = [(x/filled_image.shape[0], y/filled_image.shape[1]) for (x,y) in centers_of_mass]  # normalize
+        # x is flipped, y is not
+        if led_loc == 'topright':
+            idx = np.asarray([((x < 0.5) and (y > 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'topleft':
+            idx = np.asarray([((x > 0.5) and (y > 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'bottomleft':
+            idx = np.asarray([((x > 0.5) and (y < 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        elif led_loc == 'bottomright':
+            idx = np.asarray([((x < 0.5) and (y < 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        else:
+            RuntimeError('led_loc not recognized')
+        
+        # Add back one to account for background
+        idx = idx+1
+
+        # Remove non-LED labels
+        labeled_leds[~np.isin(labeled_leds, idx)] = 0
+        num_features = len(idx)
+
+        # Ensure LEDs have labels 1,2,3,4
+        if not np.all(idx == np.array([1,2,3,4])):
+            # pdb.set_trace()
+            for i,val in enumerate([1,2,3,4]):
+                labeled_leds[labeled_leds==idx[i]] = val
+
+    # If still too many features, remove small ones
+    if num_features > num_leds:
         print('OoOOoOooOooOops! Number of features (%d) did not match the number of LEDs (%d)' % (num_features,num_leds))
         
         ## erase extra labels:
@@ -80,6 +137,10 @@ def get_led_data(frame_data_chunk,num_leds = 4,chunk_num=0,
                 print('Erasing extraneous label #%d' % erase)
                 labeled_leds[labeled_leds==erase] = 0
                 
+
+    # Show led labels for debugging
+    plot_video_frame(labeled_leds,'%s/frame_%d_led_labels.png' % (save_path,chunk_num) )
+
     ## assign labels to the LEDs
     labels = [label for label in np.unique(labeled_leds) if label > 0 ]
             
@@ -150,15 +211,10 @@ def get_events(leds,timestamps,time_offset=0,num_leds=2):
             directions.append(np.repeat(direction_sign,times_of_dir.shape[0] ))
 
 
-
     times = np.hstack(times)
     channels = np.hstack(channels)
     directions = np.hstack(directions)
-    
     sorting = np.argsort(times)
-    
-    
     events = np.vstack([times[sorting],channels[sorting],directions[sorting]]).T
       
-    
     return events
