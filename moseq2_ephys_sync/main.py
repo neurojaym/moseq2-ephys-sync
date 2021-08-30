@@ -122,6 +122,11 @@ def sync(base_path):
     channels = np.load('%s/channel_states.npy' % ephys_ttl_path)
     ephys_timestamps = np.load('%s/timestamps.npy' % ephys_ttl_path)
 
+    ## need to subtract the raw traces' starting timestamp from the TTL timestamps:
+    continuous_timestamps_path = glob('%s/**/continuous/**/timestamps.npy' % base_path,recursive = True)[0] ## load the continuous stream's timestamps
+    continuous_timestamps = np.load(continuous_timestamps_path)
+
+    ephys_timestamps -= continuous_timestamps[0] ## subract the first timestamp from all TTLs; this way continuous ephys can safely start at 0 samples or seconds
 
 
     ephys_fs = 3e4
@@ -140,6 +145,7 @@ def sync(base_path):
     ephys_events = np.vstack([ephys_timestamps[abs(channels)<=5],abs(channels[abs(channels)<=5])-1,np.sign(channels[abs(channels)<=5]) ]).T
     ephys_codes, ephys_latencies = events_to_codes(ephys_events,nchannels=4,minCodeTime=(led_interval-1)*ephys_fs)
     ephys_codes = np.asarray(ephys_codes)
+
 
 
     np.savez('%s/codes.npz' % save_path, led_codes=led_codes, ephys_codes=ephys_codes)
