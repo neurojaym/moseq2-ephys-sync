@@ -115,7 +115,11 @@ def sync(base_path):
     else:
         led_events = np.load(led_events_path)['led_events']
         
-
+    #Sometimes LED0 is busted, so we need to remove those codes from video events
+    #and we need to re-0-index the LED columns:
+    led_events = led_events[np.where(led_events.T[1]!=0)]
+    led_events[:,1] = led_events[:,1]-1 #reindex at 0 when LED #0 is busted
+    
     ################################# Load the ephys TTL data #####################################
 
     ephys_ttl_path = glob('%s/**/TTL_*/' % base_path,recursive = True)[0]
@@ -132,13 +136,17 @@ def sync(base_path):
 
 
     ## convert the LED events to bit codes:
-    led_codes, latencies = events_to_codes(led_events,nchannels=4,minCodeTime=led_interval-1)
+    led_codes, latencies = events_to_codes(led_events,nchannels=3,minCodeTime=led_interval-1)
     led_codes = np.asarray(led_codes)
 
 
     ## convert the ephys TTL events to bit codes:
-    ephys_events = np.vstack([ephys_timestamps[abs(channels)<=5],abs(channels[abs(channels)<=5])-1,np.sign(channels[abs(channels)<=5]) ]).T
-    ephys_codes, ephys_latencies = events_to_codes(ephys_events,nchannels=4,minCodeTime=(led_interval-1)*ephys_fs)
+    ephys_events = np.vstack([ephys_timestamps[abs(channels)!=5],abs(channels[abs(channels)!=5])-1,np.sign(channels[abs(channels)!=5]) ]).T
+    #when led0 is busted, re-0-index the ephys leds
+    ephys_events[:,1] = ephys_events[:,1]-1
+
+
+    ephys_codes, ephys_latencies = events_to_codes(ephys_events,nchannels=3,minCodeTime=(led_interval-1)*ephys_fs)
     ephys_codes = np.asarray(ephys_codes)
 
 
