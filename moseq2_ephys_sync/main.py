@@ -88,26 +88,6 @@ def main_function(base_path, output_dir_name, first_source, second_source, led_l
     # Codes array should have times in seconds by this point
     plotting.plot_code_chunk(first_source_led_codes, second_source_led_codes, save_path)
 
-    ################################# Load the ephys TTL data #####################################
-
-    ephys_ttl_path = glob('%s/**/TTL_*/' % base_path,recursive = True)[0]
-    channels = np.load('%s/channel_states.npy' % ephys_ttl_path)
-    ephys_timestamps = np.load('%s/timestamps.npy' % ephys_ttl_path)
-
-    ## need to subtract the raw traces' starting timestamp from the TTL timestamps:
-    continuous_timestamps_path = glob('%s/**/continuous/**/timestamps.npy' % base_path,recursive = True)[0] ## load the continuous stream's timestamps
-    continuous_timestamps = np.load(continuous_timestamps_path)
-
-    ephys_timestamps -= continuous_timestamps[0] ## subract the first timestamp from all TTLs; this way continuous ephys can safely start at 0 samples or seconds
-
-
-    ephys_fs = 3e4
-
-    led_fs = 30
-
-
-
-
 
     #### SYNCING :D ####
 
