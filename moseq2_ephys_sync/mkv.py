@@ -10,10 +10,11 @@ import argparse
 import json
 import moseq2_extract.io.video as moseq_video
 import subprocess
+import pickle
 
 import plotting, extract_leds, sync
 
-def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size=2000, led_loc=None, led_rois=None):
+def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size=2000, led_loc=None, led_rois_from_file=False):
     """
     Workflow to extract led codes from an MKV file
     
@@ -61,6 +62,9 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
     mkv_led_events = []
     print('num_chunks = ', num_chunks)
 
+    if led_rois_from_file:
+        led_roi_list = load_led_rois_from_file(base_path)
+
     mkv_led_events_path = '%s_led_events.npz' % os.path.splitext(depth_path)[0]
 
     # Do the loading
@@ -69,7 +73,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
         for i in tqdm(range(num_chunks)[0:]):
         # for i in [45]:
             
-            frame_data_chunk = moseq_video.load_movie_data(depth_path,
+            frame_data_chunk = moseq_video.load_movie_data(depth_path,  # nframes, nrows, ncols
                                            frames=frame_batches[i],
                                            mapping=stream_names['IR'], movie_dtype=">u2", pixel_format="gray16be",
                                           frame_size=info['dims'],timestamps=timestamps,threads=8,
@@ -78,8 +82,8 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
             if i==0:
                 plotting.plot_video_frame(frame_data_chunk.std(axis=0),'%s/frame_std.pdf' % save_path)
 
-            if led_rois is not None:
-                leds = extract_leds.get_led_data_from_rois(frame_data_chunk=frame_data_chunk, rois=led_rois, save_path=save_path)
+            if led_rois_from_file:
+                leds = extract_leds.get_led_data_from_rois(frame_data_chunk=frame_data_chunk, led_roi_list=led_roi_list, save_path=save_path)
             else:
                 leds = extract_leds.get_led_data_with_stds(frame_data_chunk=frame_data_chunk,
                                 num_leds=num_leds,chunk_num=i, led_loc=led_loc, sort_by='horizontal',save_path=save_path)
@@ -116,6 +120,12 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
 
 
 ### MKV HELPER FUNCTIONS ###
+
+def load_led_rois_from_file(base_path):
+    fin = os.path.join(base_path, 'led_rois.pickle')
+    with open(fin, 'rb') as f:
+        led_roi_list = pickle.load(f, pickle.HIGHEST_PROTOCOL)
+    return led_roi_list
 
 def get_mkv_info(fileloc, stream=1):
     stream_features = ["width", "height", "r_frame_rate", "pix_fmt"]

@@ -8,7 +8,7 @@ plt.rcParams['pdf.fonttype'] = 'truetype'
 import numpy as np
 
 
-def plot_code_chunk(source2_codes, led_codes, save_path, fname='match_check' ):
+def plot_code_chunk(first_source_led_codes, first_source, second_source_led_codes, second_source, save_path, fname='match_check' ):
     """
     Visualize a small chunk of the bit codes. do you see a match? 
     ---
@@ -23,14 +23,14 @@ def plot_code_chunk(source2_codes, led_codes, save_path, fname='match_check' ):
 
     f,axarr = plt.subplots(2,1,dpi=600,sharex=True)
 
-    axarr[0].plot(source2_codes[:,0], source2_codes[:,1],label='ephys bit codes')
-    axarr[0].set_title('Source2 codes')
+    axarr[0].plot(first_source_led_codes[:,0], first_source_led_codes[:,1],label=first_source)
+    axarr[0].set_title(first_source)
 
-    axarr[1].plot(led_codes[:,0],led_codes[:,1],label='video bit codes')
-    axarr[1].set_title('MKV codes')
+    axarr[1].plot(second_source_led_codes[:,0],second_source_led_codes[:,1],label=second_source)
+    axarr[1].set_title(second_source)
     
 
-    plt.xlim([0,200])
+    plt.xlim([0,300])
     plt.xlabel('time (sec)')
     plt.ylabel('bit code')
     plt.legend()
