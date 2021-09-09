@@ -5,20 +5,20 @@ import argparse
 from mlinsights.mlmodel import PiecewiseRegressor
 from sklearn.preprocessing import KBinsDiscretizer
 
-import mkv, arduino, ttl, sync, plotting
+import mkv, arduino, ttl, sync, plotting, basler
 
 import pdb
 
-"""
-TODO:
 
--- add ROIs capability to MKV workflow
--- refactor extract_leds to work with various other videos
-
-"""
-
-
-def main_function(base_path, output_dir_name, first_source, second_source, led_loc=None, led_blink_interval=5, arduino_spec=None, overwrite_models=False):
+def main_function(base_path,
+output_dir_name,
+first_source,
+second_source,
+led_loc=None, 
+led_blink_interval=5, 
+arduino_spec=None, 
+led_rois_from_file=False, 
+overwrite_models=False):
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times
     ----
@@ -33,12 +33,13 @@ def main_function(base_path, output_dir_name, first_source, second_source, led_l
         second_source (str): same as first_source, but these codes are used to predict first_source.
         led_loc (str): specifiy one of four corners of the movie in which to find the LEDs: topright, bottomright, topleft, bottomleft
         led_blink_interval (int): interval in seconds between LED changes. Typically 5 seconds.
-
+        led_rois_from_file (bool): whether to look in base path for led roi pickle.
     Outputs:
         -
 
     Notes:
         - Each workflow checks for already-pre-processed data, so that the script should be pretty easy to debug.
+        - Basler code expects an mp4 at 120 fps. If you use 60 fps, probably need to change the minCodeTime arg in line 80 of basler.py.
     """
 
     print(f'Running sync on {base_path} with {first_source} as first source and {second_source} as second source.')
@@ -47,6 +48,7 @@ def main_function(base_path, output_dir_name, first_source, second_source, led_l
     #### SETUP ####
     # Built-in params (should make dynamic)
     mkv_chunk_size = 2000
+    basler_chunk_size = 1000  # too much larger (incl 2000) crashes O2 with 64 GB, not sure why since these chunks are only 10G.
     num_leds = 4
     ephys_fs = 3e4  # sampling rate in Hz
 
@@ -61,6 +63,11 @@ def main_function(base_path, output_dir_name, first_source, second_source, led_l
         raise RuntimeError("Models already exist and overwrite_models is false!")
 
 
+    # Check if user is accidentally using conflicting led extraction params
+    if led_loc and led_rois_from_file:
+        raise RuntimeError("User cannot specify both led location (top right, etc) and list of exact LED ROIs!")
+    elif ((first_source == 'basler') or (second_source == 'basler')) and not led_rois_from_file:
+        raise RuntimeError("User must specify LED rois for basler workflow")
 
     #### INDIVIDUAL DATA STREAM WORKFLOWS ####
 
@@ -68,25 +75,29 @@ def main_function(base_path, output_dir_name, first_source, second_source, led_l
     if first_source == 'ttl':
         first_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
     elif first_source == 'mkv':
-        first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc)
+        first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, led_rois_from_file)
     elif first_source == 'arduino':
         first_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
+    elif first_source == 'basler':
+        first_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, led_rois_from_file, overwrite_models)
 
     # Deal with second source
     if second_source == 'ttl':
         second_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
     elif second_source == 'mkv':
-        second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc)
+        second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, led_rois_from_file)
     elif second_source == 'arduino':
         second_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
-        
+    elif second_source == 'basler':
+        second_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, led_rois_from_file, overwrite_models)
+
     # Save the codes for use later
     np.savez('%s/codes.npz' % save_path, first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
 
 
     # Visualize a small chunk of the bit codes. do you see a match? 
     # Codes array should have times in seconds by this point
-    plotting.plot_code_chunk(first_source_led_codes, second_source_led_codes, save_path)
+    plotting.plot_code_chunk(first_source_led_codes, first_source, second_source_led_codes, second_source, save_path)
 
 
     #### SYNCING :D ####
@@ -97,6 +108,8 @@ def main_function(base_path, output_dir_name, first_source, second_source, led_l
                                   second_source_led_codes[:,0],
                                   second_source_led_codes[:,1],
                                   minMatch=10,maxErr=0,remove_duplicates=True ))
+
+    pdb.set_trace()
 
     ## Plot the matched codes against each other:
     plotting.plot_matched_scatter(matches, save_path)
@@ -158,11 +171,12 @@ if __name__ == "__main__" :
 
     parser.add_argument('-path', type=str)  # path to data
     parser.add_argument('-o', '--output_dir_name', type=str, default='sync')  # name of output folder within path
-    parser.add_argument('-s1', '--first_source', type=str)  # ttl, mkv, arduino (txt) 
-    parser.add_argument('-s2', '--second_source', type=str)  # ttl, mkv, arduino 
+    parser.add_argument('-s1', '--first_source', type=str)  # ttl, mkv, basler (mp4 with rois), arduino (txt) 
+    parser.add_argument('-s2', '--second_source', type=str)   
     parser.add_argument('--led_loc', type=str)
     parser.add_argument('--led_blink_interval', type=int, default=5)  # default blink every 5 seconds
     parser.add_argument('--arduino_spec', type=str, help="Currently supported: fictive_olfaction, odor_on_wheel, ")  # specifiy cols in arduino text file
+    parser.add_argument('--led_rois_from_file', action="store_true", help="Path to pickle with lists of points for led rois")  # need to run separate jup notbook first to get this
     parser.add_argument('--overwrite_models', action="store_true")  # overwrites old models if True (1)
     
     settings = parser.parse_args(); 
@@ -174,6 +188,7 @@ if __name__ == "__main__" :
                 led_loc=settings.led_loc,
                 led_blink_interval=settings.led_blink_interval,
                 arduino_spec=settings.arduino_spec,
+                led_rois_from_file=settings.led_rois_from_file,
                 overwrite_models=settings.overwrite_models)
 
     
