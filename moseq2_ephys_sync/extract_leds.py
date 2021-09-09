@@ -11,7 +11,7 @@ from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, pl
 import pdb
 
 
-def get_led_data_from_rois(frame_data_chunk, rois, led_thresh=2e4, save_path=None):
+def get_led_data_from_rois(frame_data_chunk, led_roi_list, led_thresh=2e4, save_path=None):
     """
     Given pre-determined rois for LEDs, return sequences of ons and offs
     Inputs:
@@ -25,12 +25,12 @@ def get_led_data_from_rois(frame_data_chunk, rois, led_thresh=2e4, save_path=Non
 
     leds = []
 
-    for i in range(len(rois)):
+    for i in range(len(led_roi_list)):
 
-        led_x = 2# {get x vals}
-        led_y = 2# {get y vals}
 
-        led = frame_data_chunk[:,led_x,led_y].mean(axis=1) #on/off block signals
+        pts = led_roi_list[i]
+
+        led = frame_data_chunk[:, pts[0], pts[1]].mean(axis=1) #on/off block signals  (slice returns a nframes x npts array, then you get mean of all the pts at each time)
 
         led_on = np.where(np.diff(led) > led_thresh)[0]   #rise indices
         led_off = np.where(np.diff(led) < -led_thresh)[0]   #fall indices
@@ -189,8 +189,14 @@ def get_led_data_with_stds(frame_data_chunk, num_leds = 4, chunk_num=0, led_loc=
     
     return leds
 
-def get_events(leds,timestamps,time_offset=0,num_leds=2):
+def get_events(leds, timestamps):
+    """
+    Convert list of led ons/offs + timestamps into list of ordered events
 
+    Inputs:
+        leds(np.array): num leds x num frames
+        timestamps (np.array): 1 x num frames
+    """
     ## e.g. [123,1,-1  ] time was 123rd frame, channel 1 changed from on to off... 
 
     times = []
@@ -212,8 +218,8 @@ def get_events(leds,timestamps,time_offset=0,num_leds=2):
 
 
     times = np.hstack(times)
-    channels = np.hstack(channels)
-    directions = np.hstack(directions)
+    channels = np.hstack(channels).astype('int')
+    directions = np.hstack(directions).astype('int')
     sorting = np.argsort(times)
     events = np.vstack([times[sorting],channels[sorting],directions[sorting]]).T
       
