@@ -17,7 +17,8 @@ second_source,
 led_loc=None, 
 led_blink_interval=5, 
 arduino_spec=None, 
-led_rois_from_file=False, 
+s1_led_rois_from_file=False,
+s2_led_rois_from_file=False, 
 overwrite_models=False):
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times
@@ -31,9 +32,9 @@ overwrite_models=False):
             arduino: looks for a text file with cols specified by arduino_col_type
             basler: looks for an mp4
         second_source (str): same as first_source, but these codes are used to predict first_source.
-        led_loc (str): specifiy one of four corners of the movie in which to find the LEDs: topright, bottomright, topleft, bottomleft
+        led_loc (str): MKV only! specifiy one of four corners of the movie in which to find the LEDs: topright, bottomright, topleft, bottomleft
         led_blink_interval (int): interval in seconds between LED changes. Typically 5 seconds.
-        led_rois_from_file (bool): whether to look in base path for led roi pickle.
+        s1_led_rois_from_file, s2_led_rois_from_file (bool): whether to look in base_path for led roi pickle.
     Outputs:
         -
 
@@ -62,12 +63,12 @@ overwrite_models=False):
     if model_exists_bool and not overwrite_models:
         raise RuntimeError("Models already exist and overwrite_models is false!")
 
-
-    # Check if user is accidentally using conflicting led extraction params
-    if led_loc and led_rois_from_file:
-        raise RuntimeError("User cannot specify both led location (top right, etc) and list of exact LED ROIs!")
-    elif ((first_source == 'basler') or (second_source == 'basler')) and not led_rois_from_file:
+    # Require led rois for basler
+    if (first_source == 'basler' and not s1_led_rois_from_file) or (second_source == 'basler' and not s2_led_rois_from_file):
         raise RuntimeError("User must specify LED rois for basler workflow")
+
+
+
 
     #### INDIVIDUAL DATA STREAM WORKFLOWS ####
 
@@ -75,21 +76,23 @@ overwrite_models=False):
     if first_source == 'ttl':
         first_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
     elif first_source == 'mkv':
-        first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, led_rois_from_file)
+        assert not (led_loc and s1_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
+        first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file)
     elif first_source == 'arduino':
         first_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
     elif first_source == 'basler':
-        first_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, led_rois_from_file, overwrite_models)
+        first_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, s1_led_rois_from_file, overwrite_models)
 
     # Deal with second source
     if second_source == 'ttl':
         second_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
     elif second_source == 'mkv':
-        second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, led_rois_from_file)
+        assert not (led_loc and s2_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
+        second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file)
     elif second_source == 'arduino':
         second_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
     elif second_source == 'basler':
-        second_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, led_rois_from_file, overwrite_models)
+        second_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, s1_led_rois_from_file, overwrite_models)
 
     # Save the codes for use later
     np.savez('%s/codes.npz' % save_path, first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
@@ -176,7 +179,8 @@ if __name__ == "__main__" :
     parser.add_argument('--led_loc', type=str)
     parser.add_argument('--led_blink_interval', type=int, default=5)  # default blink every 5 seconds
     parser.add_argument('--arduino_spec', type=str, help="Currently supported: fictive_olfaction, odor_on_wheel, ")  # specifiy cols in arduino text file
-    parser.add_argument('--led_rois_from_file', action="store_true", help="Path to pickle with lists of points for led rois")  # need to run separate jup notbook first to get this
+    parser.add_argument('--s1_led_rois_from_file', action="store_true", help="Flag to look for lists of points for source 1 led rois")  # need to run separate jup notbook first to get this
+    parser.add_argument('--s2_led_rois_from_file', action="store_true", help="Flag to look for lists of points for source 2 led rois")  # need to run separate jup notbook first to get this
     parser.add_argument('--overwrite_models', action="store_true")  # overwrites old models if True (1)
     
     settings = parser.parse_args(); 
@@ -188,7 +192,8 @@ if __name__ == "__main__" :
                 led_loc=settings.led_loc,
                 led_blink_interval=settings.led_blink_interval,
                 arduino_spec=settings.arduino_spec,
-                led_rois_from_file=settings.led_rois_from_file,
+                s1_led_rois_from_file=settings.s1_led_rois_from_file,
+                s2_led_rois_from_file=settings.s2_led_rois_from_file,
                 overwrite_models=settings.overwrite_models)
 
     

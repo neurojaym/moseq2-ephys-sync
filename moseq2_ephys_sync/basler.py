@@ -49,8 +49,6 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_c
             frame_data_chunk = color.rgb2gray(vr.get_batch(list(frame_batches[i])).asnumpy())  # appears to have memory leak issue, delete var after each iteration (see https://www.kaggle.com/leighplt/decord-videoreader, https://github.com/dmlc/decord/issues?q=is%3Aissue+is%3Aopen+memory)
             batch_timestamps = timestamps[frame_batches[i], 0]
 
-            pdb.set_trace()
-
             if i==0:
                 plotting.plot_video_frame(frame_data_chunk.std(axis=0),'%s/basler_frame_std.pdf' % save_path)
 
