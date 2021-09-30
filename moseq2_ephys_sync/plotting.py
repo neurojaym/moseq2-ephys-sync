@@ -23,10 +23,10 @@ def plot_code_chunk(first_source_led_codes, first_source, second_source_led_code
 
     f,axarr = plt.subplots(2,1,dpi=600,sharex=True)
 
-    axarr[0].plot(first_source_led_codes[:,0], first_source_led_codes[:,1],label=first_source)
+    axarr[0].plot(first_source_led_codes[:,0] - first_source_led_codes[0,0], first_source_led_codes[:,1],label=first_source)
     axarr[0].set_title(first_source)
 
-    axarr[1].plot(second_source_led_codes[:,0],second_source_led_codes[:,1],label=second_source)
+    axarr[1].plot(second_source_led_codes[:,0] - second_source_led_codes[0,0],second_source_led_codes[:,1],label=second_source)
     axarr[1].set_title(second_source)
     
 
