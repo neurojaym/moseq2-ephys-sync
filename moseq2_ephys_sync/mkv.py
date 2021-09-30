@@ -112,7 +112,6 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
         mkv_led_events = np.load(mkv_led_events_path)['led_events']
 
         
-    # pdb.set_trace()
 
     ############### Convert the LED events to bit codes ############### 
     mkv_led_codes, latencies = sync.events_to_codes(mkv_led_events, nchannels=4, minCodeTime=(led_blink_interval-1))
