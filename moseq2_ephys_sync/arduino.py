@@ -38,6 +38,9 @@ def get_col_info(spec):
     if spec == "fictive_olfaction":
         arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'yaw', 'roll', 'pitch', 'accx', 'accy', 'accz', 'therm', 'olfled']
         arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'float64', 'float64']
+    elif spec == 'basic_thermistor':
+        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'yaw', 'roll', 'pitch', 'accx', 'accy', 'accz', 'therm']
+        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'float64']
     elif spec == "odor_on_wheel":
         arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'wheel']
         arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'int64']
