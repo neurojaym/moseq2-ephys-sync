@@ -5,17 +5,23 @@ import pdb
 
 import sync
 
-def arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec):
+def arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec, timestamp_jump_skip_event_threshhold=100):
     """
     Workflow to get codes from arduino txt file. Note arduino sampling rate is calculated empirically below because it's not stable from datapoint to datapoint.
     
+    Inputs:
+        base_path (str): path to the .txt file
+        num_leds (int): expects 4
+        led_blink_interval: sets an upper bound on how fast the sync code can change. Useful for noisy vids.
+        arduino_spec (str): Specifies what the column names should be in the data that gets read in. Current options are "fictive_olfaction" or "odor_on_wheel", which are interpreted below.
+        timestamp_jump_skip_event_threshhold (int): if there is a jump in timestamps larger than this, skip any artifactual "event" that might arise because of it.
     """
     assert num_leds==4, "Arduino code expects 4 LED channels, other nums of channels not yet supported"
     assert arduino_spec is not None, "Arduino source requires a spec for the column names and datatypes (see arg arduino_spec)"
     arduino_colnames, arduino_dtypes = get_col_info(arduino_spec)
     ino_data = load_arduino_data(base_path, arduino_colnames, arduino_dtypes, file_glob='*.txt')
     ino_timestamps = ino_data.time  # these are in milliseconds
-    ino_events = list_to_events(ino_timestamps, ino_data.led1, ino_data.led2, ino_data.led3, ino_data.led4)
+    ino_events = list_to_events(ino_timestamps, ino_data.led1, ino_data.led2, ino_data.led3, ino_data.led4, tskip=timestamp_jump_skip_event_threshhold)
     ino_average_fs = 1/(np.mean(np.diff(ino_timestamps)))*1000  # fs = sampling freq in Hz
     ino_codes, _ = sync.events_to_codes(ino_events, nchannels=4, minCodeTime=(led_blink_interval-1)*1000)  # I think as long as the column 'timestamps' in events and the minCodeTime are in the same units, it's fine (for ephys, its nsamples, for arudino, it's ms)
     ino_codes = np.asarray(ino_codes)
@@ -63,11 +69,12 @@ def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
     return data
 
 
-def list_to_events(time_list, led1, led2, led3, led4):
+def list_to_events(time_list, led1, led2, led3, led4, tskip):
     """
     Transforms list of times and led states into list of led change events.
     ---
     Input: pd.Series from arduino text file
+        tskip (int): if there is a jump in timestamps larger than this, skip any artifactual "event" that might arise because of it.
     ---
     Output: 
     events : 2d array
@@ -78,14 +85,19 @@ def list_to_events(time_list, led1, led2, led3, led4):
     """
     led_states = [led1, led2, led3, led4]
 
+    # Check for timestamp skips
+    time_diffs = np.diff(time_list)
+    skip_list = np.asarray(time_diffs >= tskip).nonzero()[0] + 1
+
     # Get lists of relevant times and events
     times = pd.Series(dtype='int64', name='times')
     channels = pd.Series(dtype='int8', name='channels')
     directions = pd.Series(dtype='int8', name='directions')
     for i in range(4):
-        states = led_states[i]
+        states = led_states[i]  # list of 0s and 1s for this given LED
         diffs = np.diff(states)
         events_idx = np.asarray(diffs != 0).nonzero()[0] + 1  # plus 1, because the event should be the first timepoint where it's different
+        events_idx = events_idx[~np.isin(events_idx, skip_list)]  # remove any large time skips because they're not guaranteed to be synchronized
         times = times.append(pd.Series(time_list[events_idx], name='times'), ignore_index=True)
         channels = channels.append(pd.Series(np.repeat(i,len(events_idx)), name='channels'), ignore_index=True)
         directions = directions.append(pd.Series(np.sign(diffs[events_idx-1]), name='directions'), ignore_index=True)
