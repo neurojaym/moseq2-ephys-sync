@@ -136,10 +136,6 @@ def get_led_data_with_stds(frame_data_chunk, num_leds = 4, chunk_num=0, led_loc=
             for erase in labels_to_erase:
                 print('Erasing extraneous label #%d' % erase)
                 labeled_leds[labeled_leds==erase] = 0
-                
-
-    # Show led labels for debugging
-    plot_video_frame(labeled_leds,'%s/frame_%d_led_labels.png' % (save_path,chunk_num) )
 
     ## assign labels to the LEDs
     labels = [label for label in np.unique(labeled_leds) if label > 0 ]
@@ -149,7 +145,9 @@ def get_led_data_with_stds(frame_data_chunk, num_leds = 4, chunk_num=0, led_loc=
     leds_xs = [np.where(labeled_leds==i)[1].mean() for i in labels] 
     leds_ys = [np.where(labeled_leds==i)[0].mean() for i in labels]  
     
+
     if sort_by == None: ## if not specified, sort by where there's most variance    
+        print('Sorting LEDs by variance...if no matches found, check LED sorting!')
         if np.std(leds_xs) > np.std(leds_ys): # sort leds by the x coord:
             sorting = np.argsort(leds_xs)
         else:
@@ -162,6 +160,12 @@ def get_led_data_with_stds(frame_data_chunk, num_leds = 4, chunk_num=0, led_loc=
         sorting = range(num_leds)
         print('Choose how to sort LEDs: vertical, horizontal, or by variance (None)')
     
+    # Show led labels for debugging
+    image_to_show = np.copy(labeled_leds)
+    for i in range(1,5):
+        image_to_show[labeled_leds==(sorting[i-1]+1)] = i
+    plot_video_frame(image_to_show,'%s/frame_%d_led_labels.png' % (save_path,chunk_num) )
+
     
     led_thresh = 2e4
 

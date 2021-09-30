@@ -11,10 +11,11 @@ import json
 import moseq2_extract.io.video as moseq_video
 import subprocess
 import pickle
+import pdb
 
 import plotting, extract_leds, sync
 
-def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size=2000, led_loc=None, led_rois_from_file=False):
+def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size=2000, led_loc=None, led_rois_from_file=False, overwrite_mkv_extraction=False):
     """
     Workflow to extract led codes from an MKV file
     
@@ -68,7 +69,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
     mkv_led_events_path = '%s_led_events.npz' % os.path.splitext(depth_path)[0]
 
     # Do the loading
-    if not os.path.isfile(mkv_led_events_path):
+    if not os.path.isfile(mkv_led_events_path) or overwrite_mkv_extraction:
 
         for i in tqdm(range(num_chunks)[0:]):
         # for i in [45]:
@@ -86,11 +87,11 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
                 leds = extract_leds.get_led_data_from_rois(frame_data_chunk=frame_data_chunk, led_roi_list=led_roi_list, save_path=save_path)
             else:
                 leds = extract_leds.get_led_data_with_stds(frame_data_chunk=frame_data_chunk,
-                                num_leds=num_leds,chunk_num=i, led_loc=led_loc, sort_by='horizontal',save_path=save_path)
+                                num_leds=num_leds,chunk_num=i, led_loc=led_loc, save_path=save_path)
             
             time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
             
-            tmp_event = extract_leds.get_events(leds,timestamps[frame_batches[i]],time_offset,num_leds=num_leds)
+            tmp_event = extract_leds.get_events(leds,timestamps[frame_batches[i]])
 
             actual_led_nums = np.unique(tmp_event[:,1]) ## i.e. what was found in this chunk
 
@@ -111,6 +112,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
         mkv_led_events = np.load(mkv_led_events_path)['led_events']
 
         
+    # pdb.set_trace()
 
     ############### Convert the LED events to bit codes ############### 
     mkv_led_codes, latencies = sync.events_to_codes(mkv_led_events, nchannels=4, minCodeTime=(led_blink_interval-1))
