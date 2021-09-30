@@ -19,7 +19,8 @@ led_blink_interval=5,
 arduino_spec=None, 
 s1_led_rois_from_file=False,
 s2_led_rois_from_file=False, 
-overwrite_models=False):
+overwrite_models=False,
+overwrite_mkv_extraction=False):
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times
     ----
@@ -35,6 +36,7 @@ overwrite_models=False):
         led_loc (str): MKV only! specifiy one of four corners of the movie in which to find the LEDs: topright, bottomright, topleft, bottomleft
         led_blink_interval (int): interval in seconds between LED changes. Typically 5 seconds.
         s1_led_rois_from_file, s2_led_rois_from_file (bool): whether to look in base_path for led roi pickle.
+        overwrite_mkv_extraction (bool): whether to re-do the MKV LED extraction
     Outputs:
         -
 
@@ -81,7 +83,7 @@ overwrite_models=False):
         first_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
     elif first_source == 'mkv':
         assert not (led_loc and s1_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
-        first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file)
+        first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file, overwrite_mkv_extraction)
     elif first_source == 'arduino':
         first_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
     elif first_source == 'basler':
@@ -92,7 +94,7 @@ overwrite_models=False):
         second_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
     elif second_source == 'mkv':
         assert not (led_loc and s2_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
-        second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file)
+        second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file, overwrite_mkv_extraction)
     elif second_source == 'arduino':
         second_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
     elif second_source == 'basler':
@@ -180,11 +182,12 @@ if __name__ == "__main__" :
     parser.add_argument('-s2', '--second_source', type=str)   
     parser.add_argument('--led_loc', type=str)
     parser.add_argument('--led_blink_interval', type=int, default=5)  # default blink every 5 seconds
-    parser.add_argument('--arduino_spec', type=str, help="Currently supported: fictive_olfaction, odor_on_wheel, ")  # specifiy cols in arduino text file
+    parser.add_argument('--arduino_spec', type=str, help="Currently supported: fictive_olfaction, odor_on_wheel, basic_thermistor")  # specifiy cols in arduino text file
     parser.add_argument('--s1_led_rois_from_file', action="store_true", help="Flag to look for lists of points for source 1 led rois")  # need to run separate jup notbook first to get this
     parser.add_argument('--s2_led_rois_from_file', action="store_true", help="Flag to look for lists of points for source 2 led rois")  # need to run separate jup notbook first to get this
     parser.add_argument('--overwrite_models', action="store_true")  # overwrites old models if True (1)
-    
+    parser.add_argument('--overwrite_mkv_extraction', action="store_true")  # re-does mkv extraction (can take a long time, hence a separate flag)
+
     settings = parser.parse_args(); 
 
     main_function(base_path=settings.path,
@@ -196,6 +199,7 @@ if __name__ == "__main__" :
                 arduino_spec=settings.arduino_spec,
                 s1_led_rois_from_file=settings.s1_led_rois_from_file,
                 s2_led_rois_from_file=settings.s2_led_rois_from_file,
-                overwrite_models=settings.overwrite_models)
+                overwrite_models=settings.overwrite_models,
+                overwrite_mkv_extraction=settings.overwrite_mkv_extraction)
 
     
