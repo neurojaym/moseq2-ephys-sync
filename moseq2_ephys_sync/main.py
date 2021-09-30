@@ -43,13 +43,18 @@ overwrite_models=False):
         - Basler code expects an mp4 at 120 fps. If you use 60 fps, probably need to change the minCodeTime arg in line 80 of basler.py.
     """
 
+    """
+    TODO: 
+    -- make basler timebase dynamic (or auto detect??)
+
+    """
     print(f'Running sync on {base_path} with {first_source} as first source and {second_source} as second source.')
 
 
     #### SETUP ####
     # Built-in params (should make dynamic)
     mkv_chunk_size = 2000
-    basler_chunk_size = 1000  # too much larger (incl 2000) crashes O2 with 64 GB, not sure why since these chunks are only 10G.
+    basler_chunk_size = 2000  
     num_leds = 4
     ephys_fs = 3e4  # sampling rate in Hz
 
@@ -66,7 +71,6 @@ overwrite_models=False):
     # Require led rois for basler
     if (first_source == 'basler' and not s1_led_rois_from_file) or (second_source == 'basler' and not s2_led_rois_from_file):
         raise RuntimeError("User must specify LED rois for basler workflow")
-
 
 
 
@@ -111,8 +115,6 @@ overwrite_models=False):
                                   second_source_led_codes[:,0],
                                   second_source_led_codes[:,1],
                                   minMatch=10,maxErr=0,remove_duplicates=True ))
-
-    pdb.set_trace()
 
     ## Plot the matched codes against each other:
     plotting.plot_matched_scatter(matches, save_path)
