@@ -35,6 +35,10 @@ def get_col_info(spec):
     elif spec == "odor_on_wheel":
         arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'wheel']
         arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'int64']
+    elif spec == "bucket":
+        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'yaw', 'roll', 'pitch', 'accx', 'accy', 'accz', 'therm']
+        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'float64']
+
     return arduino_colnames, arduino_dtypes
 
 
