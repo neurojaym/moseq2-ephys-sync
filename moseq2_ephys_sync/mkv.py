@@ -13,7 +13,9 @@ import subprocess
 import pickle
 import pdb
 
-import plotting, extract_leds, sync
+import moseq2_ephys_sync.plotting as plotting
+import moseq2_ephys_sync.extract_leds as extract_leds
+import moseq2_ephys_sync.sync as sync
 
 def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size=2000, led_loc=None, led_rois_from_file=False, overwrite_mkv_extraction=False):
     """
