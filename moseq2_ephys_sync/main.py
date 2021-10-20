@@ -92,7 +92,7 @@ overwrite_models=False):
         second_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, led_rois_from_file, overwrite_models)
 
     # Save the codes for use later
-    np.savez('%s/codes.npz' % save_path, first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
+    np.savez('%s/codes_%s_%s.npz' % (save_path,first_source,second_source), first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
 
 
     # Visualize a small chunk of the bit codes. do you see a match? 
@@ -109,10 +109,10 @@ overwrite_models=False):
                                   second_source_led_codes[:,1],
                                   minMatch=10,maxErr=0,remove_duplicates=True ))
 
-    pdb.set_trace()
+    #pdb.set_trace()
 
     ## Plot the matched codes against each other:
-    plotting.plot_matched_scatter(matches, save_path)
+    plotting.plot_matched_scatter(matches, save_path,first_source,second_source)
 
 
 
@@ -144,17 +144,17 @@ overwrite_models=False):
         
         # Learn to predict s1 from s2. Syntax is fit(X,Y).
         mdl = PiecewiseRegressor(verbose=True,
-                                binner=KBinsDiscretizer(n_bins=10))
+                                binner=KBinsDiscretizer(n_bins=4))
         mdl.fit(s2.reshape(-1, 1), s1)
 
         # Verify accuracy of predicted event times
         predicted_event_times = mdl.predict(s2.reshape(-1, 1) )
         time_errors = predicted_event_times - s1 
-        plotting.plot_model_errors(time_errors,save_path)
+        plotting.plot_model_errors(time_errors,save_path, first_source,second_source)
 
         # Verify accuracy of all predicted times
         all_predicted_times = mdl.predict(t2[:,0].reshape(-1, 1) )
-        plotting.plot_matches_video_time(all_predicted_times, t2, t1, save_path)
+        plotting.plot_matches_video_time(all_predicted_times, t2, t1, save_path,first_source,second_source)
 
         # Save
         joblib.dump(mdl, f'{save_path}/{n1}_from_{n2}.p')

@@ -35,13 +35,13 @@ def plot_code_chunk(first_source_led_codes, first_source, second_source_led_code
     plt.ylabel('bit code')
     plt.legend()
 
-    f.savefig(f'{save_path}/{fname}.png')
+    f.savefig(f'{save_path}/{fname}_{first_source}_{second_source}.png')
 
     plt.close(f)
 
 
 ## plot the matched codes against each other:
-def plot_matched_scatter(matches,save_path):
+def plot_matched_scatter(matches,save_path,first_source,second_source):
 
     f = plt.figure(dpi=600)
 
@@ -54,12 +54,12 @@ def plot_matched_scatter(matches,save_path):
     plt.xlabel('time of ephys codes')
     plt.ylabel('time of video codes')
 
-    f.savefig('%s/matched_codes_scatter.png' % save_path)
+    f.savefig(f'{save_path}/matched_codes_scatter_{first_source}_{second_source}.png')
 
     plt.close(f)
 
 ## plot model errors:
-def plot_model_errors(time_errors, save_path, fname='model_errors'):
+def plot_model_errors(time_errors, save_path, first_source, second_source, fname='model_errors'):
 
     f = plt.figure(dpi=600)
     ax = plt.hist(time_errors)
@@ -67,13 +67,13 @@ def plot_model_errors(time_errors, save_path, fname='model_errors'):
     plt.title('%.2f sec. mean abs. error in second source Times' % np.abs(np.mean(time_errors)))
     plt.xlabel('Predicted - actual matched video code times')
 
-    f.savefig(f'{save_path}/{fname}.png')
+    f.savefig(f'{save_path}/{fname}_{first_source}_{second_source}.png')
 
     plt.close(f)
 
 
 ## plot the codes on the same time scale
-def plot_matches_video_time(predicted_video_times,ephys_codes,led_codes,save_path):
+def plot_matches_video_time(predicted_video_times,ephys_codes,led_codes,save_path, first_source, second_source):
     f = plt.figure(dpi=600)
 
     start,stop =  0,100
@@ -86,7 +86,7 @@ def plot_matches_video_time(predicted_video_times,ephys_codes,led_codes,save_pat
 
     plt.legend()
 
-    f.savefig('%s/matched_codes_video_time.png' % save_path)
+    f.savefig(f'{save_path}/matched_codes_video_time_{first_source}_{second_source}.png')
 
     plt.close(f)
 
