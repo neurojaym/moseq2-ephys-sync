@@ -90,7 +90,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
             
             time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
             
-            tmp_event = extract_leds.get_events(leds,timestamps[frame_batches[i]],time_offset,num_leds=num_leds)
+            tmp_event = extract_leds.get_events(leds,timestamps[frame_batches[i]])
 
             actual_led_nums = np.unique(tmp_event[:,1]) ## i.e. what was found in this chunk
 
