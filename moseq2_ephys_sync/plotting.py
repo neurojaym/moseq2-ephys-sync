@@ -59,7 +59,7 @@ def plot_matched_scatter(matches,save_path):
     plt.close(f)
 
 ## plot model errors:
-def plot_model_errors(time_errors, save_path, fname='model_errors'):
+def plot_model_errors(time_errors, save_path, outname, fname='model_errors'):
 
     f = plt.figure(dpi=600)
     ax = plt.hist(time_errors)
@@ -67,26 +67,30 @@ def plot_model_errors(time_errors, save_path, fname='model_errors'):
     plt.title('%.2f sec. mean abs. error in second source Times' % np.abs(np.mean(time_errors)))
     plt.xlabel('Predicted - actual matched video code times')
 
-    f.savefig(f'{save_path}/{fname}.png')
+    f.savefig(f'{save_path}/{fname}_{outname}.png')
 
     plt.close(f)
 
 
 ## plot the codes on the same time scale
-def plot_matches_video_time(predicted_video_times,ephys_codes,led_codes,save_path):
+def plot_matched_times(all_predicted_times, t2_codes, t1_codes, save_path, outname):
     f = plt.figure(dpi=600)
 
     start,stop =  0,100
-    plt.plot(predicted_video_times[start:stop] , ephys_codes[start:stop,1],lw=2,label='Predicted video times')
 
-    plt.plot(led_codes[start:stop,0], led_codes[start:stop,1],alpha=0.5,lw=1,label='Actual video times')
+    # plot t2 codes on t1 timebase
+    plt.plot(all_predicted_times[start:stop] , t2_codes[start:stop,1],lw=2,label='Predicted video times')
+
+    # plot t1 codes on t1 timebase
+    plt.plot(t1_codes[start:stop,0], t1_codes[start:stop,1],alpha=0.5,lw=1,label='Actual video times')
 
     plt.xlabel('Time (sec)')
     plt.ylabel('Bit Code')
+    plt.title('Matched times (ok if not entirely overlapping)')
 
     plt.legend()
 
-    f.savefig('%s/matched_codes_video_time.png' % save_path)
+    f.savefig(f'{save_path}/matched_codes_video_time_{outname}.png')
 
     plt.close(f)
 

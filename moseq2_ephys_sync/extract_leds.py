@@ -7,7 +7,7 @@ import numpy as np
 from skimage.feature import canny
 from scipy import ndimage as ndi
 from skimage.filters import threshold_otsu
-from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_matches_video_time,plot_video_frame
+from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors,plot_video_frame
 import pdb
 
 

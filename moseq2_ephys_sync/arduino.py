@@ -16,6 +16,7 @@ def arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino
         arduino_spec (str): Specifies what the column names should be in the data that gets read in. Current options are "fictive_olfaction" or "odor_on_wheel", which are interpreted below.
         timestamp_jump_skip_event_threshhold (int): if there is a jump in timestamps larger than this, skip any artifactual "event" that might arise because of it.
     """
+    print('Doing arduino workflow...')
     assert num_leds==4, "Arduino code expects 4 LED channels, other nums of channels not yet supported"
     assert arduino_spec is not None, "Arduino source requires a spec for the column names and datatypes (see arg arduino_spec)"
     arduino_colnames, arduino_dtypes = get_col_info(arduino_spec)
@@ -35,40 +36,83 @@ def get_col_info(spec):
     """
     Given a string specifying the experiment type, return expected list of columns in arudino text file
     """
-    if spec == "fictive_olfaction":
+    if spec == 'old_fictive_olfaction':
         arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'yaw', 'roll', 'pitch', 'accx', 'accy', 'accz', 'therm', 'olfled']
-        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'float64', 'float64']
+        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'float64', 'float64', 'int32', 'uint8']
+    elif spec == 'fictive_olfaction':
+        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'yaw', 'roll', 'pitch', 'accx', 'accy', 'accz', 'therm', 'olfled', 'pwm']
+        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'float64', 'float64', 'int32', 'uint8', 'uint8']
     elif spec == 'basic_thermistor':
         arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'yaw', 'roll', 'pitch', 'accx', 'accy', 'accz', 'therm']
-        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'float64']
-    elif spec == "odor_on_wheel":
-        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'wheel']
-        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'int64']
+        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'int32']
+    elif spec == 'odor_on_wheel':
+        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'wheel', 'thermistor', 'odor_ttl']
+        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'int64', 'int64', 'uint8']
     return arduino_colnames, arduino_dtypes
 
 
 
 def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
+
+    # Define header data types
+    # Do not use unsigned integers!! Otherwise np.diff() will not be able to return negatives.
+    header_val_dtypes = {
+        'time': 'int64',
+        'led1': 'int8',
+        'led2': 'int8',
+        'led3': 'int8',
+        'led4': 'int8',
+        'yaw': 'float64',
+        'roll': 'float64',
+        'pitch': 'float64',
+        'accx': 'float64',
+        'accy': 'float64',
+        'accz': 'float64',
+        'therm': 'int16',
+        'thermistor': 'int16',
+        'olfled': 'int8',
+        'pwm': 'int8',
+        'pwmVal': 'int8',
+        'odor_ttl': 'int8',
+        'wheel': 'int64'    
+    }
+
+
+    # Try to find file
     arduino_data = glob(f'{base_path}/{file_glob}')
     try:
         arduino_data = arduino_data[0]
     except IndexError:
         raise FileNotFoundError("Could not find arduino data (*.txt) in specified location!")
         
-    dtype_dict = {colname: dtype for colname, dtype in zip(colnames, dtypes)}
-    try:
-        # Try loading the entire thing first. 
-        data = pd.read_csv(arduino_data, header=0, names=colnames, dtype=dtype_dict, error_bad_lines=False)
-    except ValueError:
+    # Check if header is present
+    with open(arduino_data, 'r') as f:
+        first_row = f.readline().strip('\r\n').split(',')
+    if first_row[0] == 'time':
+        header = 1
+        colnames = first_row
+        print('Found header in arduino file, using...')
+    else:
+        header = 0
+
+    if header:
+        dtype_dict = {col: header_val_dtypes[col] for col in colnames}
+        data = pd.read_csv(arduino_data, header=0, dtype=dtype_dict, error_bad_lines=False)  # header=0 means first row
+    else:
+        dtype_dict = {colname: dtype for colname, dtype in zip(colnames, dtypes)}
         try:
-            # If needed, try ignoring the last line. This is slower so we don't use as default.
-            data = pd.read_csv(arduino_data, header=0, names=colnames, dtype=dtype_dict, error_bad_lines=False, warn_bad_lines=True, skipfooter=1)
-        except:
-            raise RuntimeError('Could not load arduino data -- check text file for weirdness. \
-            Most common issues text file issues are: \
-            -- line that ends with a "-" (minus sign), "." (decima) \
-            -- line that begins with a "," (comma) \
-            -- usually no more than one issue like this per txt file')
+            # Try loading the entire thing first. 
+            data = pd.read_csv(arduino_data, header=0, names=colnames, dtype=dtype_dict, error_bad_lines=False)
+        except ValueError:
+            try:
+                # If needed, try ignoring the last line. This is slower so we don't use as default.
+                data = pd.read_csv(arduino_data, header=0, names=colnames, dtype=dtype_dict, error_bad_lines=False, warn_bad_lines=True, skipfooter=1)
+            except:
+                raise RuntimeError('Could not load arduino data -- check text file for weirdness. \
+                Most common issues text file issues are: \
+                -- line that ends with a "-" (minus sign), "." (decima) \
+                -- line that begins with a "," (comma) \
+                -- usually no more than one issue like this per txt file')
     return data
 
 

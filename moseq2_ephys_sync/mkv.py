@@ -32,7 +32,8 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
 
     # Load timestamps and mkv info if exist, otherwise calculate
     if (os.path.exists(info_path) and os.path.exists(timestamp_path) ):
-        
+        print('Loading preexisting mkv timestamps...')
+
         with open(info_path,'r') as f:
             info = json.load(f)
 
@@ -40,6 +41,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
         timestamps = timestamps.values[:,1].flatten()
 
     else:
+        print('Loading mkv timestamps de novo...')
         ## get info on the depth file; we'll use this to see how many frames we have
         info,timestamps = get_mkv_info(depth_path,stream=stream_names['DEPTH'])
 
@@ -113,11 +115,13 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
     else:
         mkv_led_events = np.load(mkv_led_events_path)['led_events']
 
-        
+    print('Successfullly extracted mkv leds, converting to codes...')    
+
 
     ############### Convert the LED events to bit codes ############### 
     mkv_led_codes, latencies = sync.events_to_codes(mkv_led_events, nchannels=4, minCodeTime=(led_blink_interval-1))
     mkv_led_codes = np.asarray(mkv_led_codes)
+    print('Converted.')
 
     return mkv_led_codes
 

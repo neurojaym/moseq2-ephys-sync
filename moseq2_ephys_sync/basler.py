@@ -29,7 +29,7 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_c
     num_frames = len(vr)
     timestamps = vr.get_frame_timestamp(np.arange(0,num_frames))  # blazing fast. nframes x 2 (beginning,end)
     print('Assuming Basler recorded at 120 fps...')
-    timestamps = timestamps*2  # when basler records at 120 fps, timebase is halved :/
+    # timestamps = timestamps*2  # when basler records at 120 fps, timebase is halved :/
 
     ############### Cycle through the frame chunks to get all LED events: ###############
     
@@ -50,10 +50,12 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_c
             # NO! The skimage functions convert to float all at once, this causes memory issues!
             # NB: just request 100 GB ram :/
             frame_data_chunk = color.rgb2gray(vr.get_batch(list(frame_batches[i])).asnumpy())  
+
             # rgb_frame_data_chunk = vr.get_batch(list(frame_batches[i])).asnumpy()  # instead, convert one frame at a time. Size of return is N x W x H x 3.
             # frame_data_chunk = np.zeros(rgb_frame_data_chunk.shape[0:-1], dtype='uint8') # N x W x H
             # for j in range(rgb_frame_data_chunk.shape[0]):
             #     frame_data_chunk[j,:,:] = color.rgb2gray(rgb_frame_data_chunk)
+            
             batch_timestamps = timestamps[frame_batches[i], 0]
 
             if i==0:
