@@ -66,13 +66,17 @@ def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
         'roll': 'float64',
         'pitch': 'float64',
         'accx': 'float64',
-        'accy': 'float64',
+        'acc_x': 'float64',  # same as accz  
+        'accy': 'float64',  
+        'acc_y': 'float64',  # same as accy
         'accz': 'float64',
+        'acc_z': 'float64',  # same as acc_z
         'therm': 'int16',
-        'thermistor': 'int16',
+        'thermistor': 'int16',  # same as thermistor
         'olfled': 'int8',
+        'ledState': 'int8',  # same as olfled
         'pwm': 'int8',
-        'pwmVal': 'int8',
+        'pwmVal': 'int8',  # same as pwm
         'odor_ttl': 'int8',
         'wheel': 'int64'    
     }
