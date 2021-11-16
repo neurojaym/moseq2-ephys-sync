@@ -73,16 +73,16 @@ def plot_model_errors(time_errors, save_path, outname, fname='model_errors'):
 
 
 ## plot the codes on the same time scale
-def plot_matched_times(all_predicted_times, t2_codes, t1_codes, save_path, outname):
+def plot_matched_times(all_predicted_times, t2_codes, t1_codes, n1, n2, save_path, outname):
     f = plt.figure(dpi=600)
 
     start,stop =  0,100
 
     # plot t2 codes on t1 timebase
-    plt.plot(all_predicted_times[start:stop] , t2_codes[start:stop,1],lw=2,label='Predicted video times')
+    plt.plot(all_predicted_times[start:stop] , t2_codes[start:stop,1],lw=2,label=f'Predicting {n1} from {n2}')
 
     # plot t1 codes on t1 timebase
-    plt.plot(t1_codes[start:stop,0], t1_codes[start:stop,1],alpha=0.5,lw=1,label='Actual video times')
+    plt.plot(t1_codes[start:stop,0], t1_codes[start:stop,1],alpha=0.5,lw=1,label='Actual {n1}')
 
     plt.xlabel('Time (sec)')
     plt.ylabel('Bit Code')

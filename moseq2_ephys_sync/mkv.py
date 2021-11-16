@@ -90,8 +90,13 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
             if led_rois_from_file:
                 leds = extract_leds.get_led_data_from_rois(frame_data_chunk=frame_data_chunk, led_roi_list=led_roi_list, save_path=save_path)
             else:
-                leds = extract_leds.get_led_data_with_stds(frame_data_chunk=frame_data_chunk,
-                                num_leds=num_leds,chunk_num=i, led_loc=led_loc, save_path=save_path)
+                leds = extract_leds.get_led_data_with_stds( \
+                                        frame_data_chunk=frame_data_chunk,
+                                        movie_type='mkv',
+                                        num_leds=num_leds,
+                                        chunk_num=i,
+                                        led_loc=led_loc,
+                                        save_path=save_path)
             
             time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
             

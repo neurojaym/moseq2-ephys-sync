@@ -3,7 +3,8 @@ import numpy as np
 from glob import glob
 import pdb
 
-import sync
+import moseq2_ephys_sync.sync as sync
+import moseq2_ephys_sync.util as util
 
 def arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec, timestamp_jump_skip_event_threshhold=100):
     """
@@ -48,6 +49,9 @@ def get_col_info(spec):
     elif spec == 'odor_on_wheel':
         arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'wheel', 'thermistor', 'odor_ttl']
         arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'int64', 'int64', 'uint8']
+    elif spec == 'header':  # headers in txt files
+        arduino_colnames = None
+        arduino_dtypes = None
     return arduino_colnames, arduino_dtypes
 
 
@@ -77,20 +81,17 @@ def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
         'ledState': 'int8',  # same as olfled
         'pwm': 'int8',
         'pwmVal': 'int8',  # same as pwm
+        'mouseROI': 'int8',
         'odor_ttl': 'int8',
         'wheel': 'int64'    
     }
 
-
-    # Try to find file
-    arduino_data = glob(f'{base_path}/{file_glob}')
-    try:
-        arduino_data = arduino_data[0]
-    except IndexError:
-        raise FileNotFoundError("Could not find arduino data (*.txt) in specified location!")
+    # Find file
+    arduino_data_path = util.find_file_through_glob_and_symlink(base_path, file_glob)
         
     # Check if header is present
-    with open(arduino_data, 'r') as f:
+    
+    with open(arduino_data_path, 'r') as f:
         first_row = f.readline().strip('\r\n').split(',')
     if first_row[0] == 'time':
         header = 1
@@ -101,16 +102,16 @@ def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
 
     if header:
         dtype_dict = {col: header_val_dtypes[col] for col in colnames}
-        data = pd.read_csv(arduino_data, header=0, dtype=dtype_dict, error_bad_lines=False)  # header=0 means first row
+        data = pd.read_csv(arduino_data_path, header=0, dtype=dtype_dict, error_bad_lines=False)  # header=0 means first row
     else:
         dtype_dict = {colname: dtype for colname, dtype in zip(colnames, dtypes)}
         try:
             # Try loading the entire thing first. 
-            data = pd.read_csv(arduino_data, header=0, names=colnames, dtype=dtype_dict, error_bad_lines=False)
+            data = pd.read_csv(arduino_data_path, header=0, names=colnames, dtype=dtype_dict, error_bad_lines=False)
         except ValueError:
             try:
                 # If needed, try ignoring the last line. This is slower so we don't use as default.
-                data = pd.read_csv(arduino_data, header=0, names=colnames, dtype=dtype_dict, error_bad_lines=False, warn_bad_lines=True, skipfooter=1)
+                data = pd.read_csv(arduino_data_path, header=0, names=colnames, dtype=dtype_dict, error_bad_lines=False, warn_bad_lines=True, skipfooter=1)
             except:
                 raise RuntimeError('Could not load arduino data -- check text file for weirdness. \
                 Most common issues text file issues are: \

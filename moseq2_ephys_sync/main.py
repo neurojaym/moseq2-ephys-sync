@@ -5,7 +5,7 @@ import argparse
 from mlinsights.mlmodel import PiecewiseRegressor
 from sklearn.preprocessing import KBinsDiscretizer
 
-import mkv, arduino, ttl, sync, plotting, basler
+import mkv, arduino, ttl, sync, plotting, basler, avi
 
 import pdb
 
@@ -20,7 +20,7 @@ arduino_spec=None,
 s1_led_rois_from_file=False,
 s2_led_rois_from_file=False, 
 overwrite_models=False,
-overwrite_mkv_extraction=False):
+overwrite_extraction=False):
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times
     ----
@@ -57,6 +57,7 @@ overwrite_mkv_extraction=False):
     # Built-in params (should make dynamic)
     mkv_chunk_size = 2000
     basler_chunk_size = 2000  
+    avi_chunk_size = 2000
     num_leds = 4
     ephys_fs = 3e4  # sampling rate in Hz
 
@@ -86,11 +87,16 @@ overwrite_mkv_extraction=False):
         first_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
     elif first_source == 'mkv':
         assert not (led_loc and s1_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
-        first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file, overwrite_mkv_extraction)
+        first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file, overwrite_extraction)
     elif first_source == 'arduino' or first_source=='txt':
         first_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
     elif first_source == 'basler':
         first_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, s1_led_rois_from_file, overwrite_models)
+    elif first_source == 'avi':
+        first_source_led_codes = avi.avi_workflow(base_path, save_path, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=avi_chunk_size, overwrite_extraction=overwrite_extraction)
+    else:
+        raise RuntimeError(f'First source keyword {first_source} not recognized')
+
 
     print('Dealing with second souce...')
     # Deal with second source
@@ -98,11 +104,17 @@ overwrite_mkv_extraction=False):
         second_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
     elif second_source == 'mkv':
         assert not (led_loc and s2_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
-        second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file, overwrite_mkv_extraction)
+        second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s2_led_rois_from_file, overwrite_extraction)
     elif second_source == 'arduino' or second_source=='txt':
         second_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
     elif second_source == 'basler':
-        second_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, s1_led_rois_from_file, overwrite_models)
+        second_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, s2_led_rois_from_file, overwrite_models)
+    elif first_source == 'avi':
+        second_source_led_codes = avi.avi_workflow(base_path, save_path, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=avi_chunk_size, overwrite_models=overwrite_models)
+    else:
+        raise RuntimeError(f'Second source keyword {second_source} not recognized')
+
+
 
     # Save the codes for use later
     np.savez('%s/codes.npz' % save_path, first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
@@ -115,13 +127,14 @@ overwrite_mkv_extraction=False):
 
     #### SYNCING :D ####
     print('Syncing the two sources...')
-
-    # Returns two columns of matched event times
-    matches = np.asarray(sync.match_codes(first_source_led_codes[:,0],  ## all times should be in seconds by here
+    # Returns two columns of matched event times. All times should be in seconds by here
+    matches = np.asarray(sync.match_codes(first_source_led_codes[:,0],  
                                   first_source_led_codes[:,1], 
                                   second_source_led_codes[:,0],
                                   second_source_led_codes[:,1],
                                   minMatch=10,maxErr=0,remove_duplicates=True ))
+
+    assert len(matches) > 0, 'No matches found -- if using a movie, double check LED extractions and correct assignment of LED order'
 
     ## Plot the matched codes against each other:
     plotting.plot_matched_scatter(matches, save_path)
@@ -156,8 +169,6 @@ overwrite_mkv_extraction=False):
             s2 = ground_truth_source1_event_times
             t2 = first_source_led_codes
             n2 = first_source
-        
-        pdb.set_trace()
 
         # Learn to predict s1 from s2. Syntax is fit(X,Y).
         mdl = PiecewiseRegressor(verbose=True,
@@ -172,8 +183,8 @@ overwrite_mkv_extraction=False):
         plotting.plot_model_errors(time_errors, save_path, outname)
 
         # Verify accuracy of all predicted times
-        all_predicted_times = mdl.predict(t2[:,0].reshape(-1, 1) )  # t1-timebase times of t2 codes
-        plotting.plot_matched_times(all_predicted_times, t2, t1, save_path, outname)
+        all_predicted_times = mdl.predict(t2[:,0].reshape(-1, 1) )  # t1-timebase times of t2 codes (predict t1 from t2)
+        plotting.plot_matched_times(all_predicted_times, t2, t1, n1, n2, save_path, outname)
 
         # Save
         joblib.dump(mdl, f'{save_path}/{outname}.p')
@@ -198,7 +209,7 @@ if __name__ == "__main__" :
     parser.add_argument('--s1_led_rois_from_file', action="store_true", help="Flag to look for lists of points for source 1 led rois")  # need to run separate jup notbook first to get this
     parser.add_argument('--s2_led_rois_from_file', action="store_true", help="Flag to look for lists of points for source 2 led rois")  # need to run separate jup notbook first to get this
     parser.add_argument('--overwrite_models', action="store_true")  # overwrites old models if True (1)
-    parser.add_argument('--overwrite_mkv_extraction', action="store_true")  # re-does mkv extraction (can take a long time, hence a separate flag)
+    parser.add_argument('--overwrite_extraction', action="store_true")  # re-does mkv or avi extraction (can take a long time, hence a separate flag)
 
     settings = parser.parse_args(); 
 
@@ -212,6 +223,6 @@ if __name__ == "__main__" :
                 s1_led_rois_from_file=settings.s1_led_rois_from_file,
                 s2_led_rois_from_file=settings.s2_led_rois_from_file,
                 overwrite_models=settings.overwrite_models,
-                overwrite_mkv_extraction=settings.overwrite_mkv_extraction)
+                overwrite_extraction=settings.overwrite_extraction)
 
     
