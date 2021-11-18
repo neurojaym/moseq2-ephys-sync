@@ -1,27 +1,13 @@
 # A workflow to deal with caleb's PyK4a acquisition system
-from datetime import time
 import numpy as np
-import pandas as pd
-import sys,os
 from tqdm import tqdm
-import subprocess
-from glob import glob
-import joblib
-import argparse
-import json
-import moseq2_extract.io.video as moseq_video
-import subprocess
-import pickle
 import pdb
+import os
 import imageio
-
-
 import moseq2_ephys_sync.plotting as plotting
 import moseq2_ephys_sync.extract_leds as extract_leds
 import moseq2_ephys_sync.sync as sync
 import moseq2_ephys_sync.util as util
-
-
 
 
 
@@ -64,12 +50,12 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_
     # get frame size (must be better way lol)
     vid = imageio.get_reader(ir_path)
     for frame in vid:
-        fsize=frame.shape  # nrows ncols nchannels
+        fsize = frame.shape  # nrows ncols nchannels
         break
 
     vid = imageio.get_reader(ir_path, pixelformat='gray8', dtype='uint8')
     nframes = vid.count_frames()
-    assert timestamps.shape[0] == nframes 
+    assert timestamps.shape[0] == nframes
     frame_batches = gen_batch_sequence(nframes, avi_chunk_size, overlap=0, offset=0)
     num_chunks = len(frame_batches)
     avi_led_events = []
@@ -111,14 +97,12 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_
             if np.all(actual_led_nums == range(num_leds)):
                 avi_led_events.append(tmp_event)
             else:
-                print('%d LEDs returned in chunk %d. Skipping... (check ROIs, thresholding)' % (len(actual_led_nums),i))
-                
-                
+                print('%d LEDs returned in chunk %d. Skipping... (check ROIs, thresholding)' % (len(actual_led_nums),i)) 
             
         avi_led_events = np.concatenate(avi_led_events)
 
         ## optional: save the events for further use
-        np.savez(avi_led_events_path,led_events=avi_led_events)
+        np.savez(avi_led_events_path, led_events=avi_led_events)
         print('Successfullly extracted avi leds, converting to codes...')    
 
     else:
@@ -126,7 +110,7 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_
         print('Using saved led events')
     
     ############### Convert the LED events to bit codes ############### 
-    avi_led_events[:,0] = avi_led_events[:,0] / 1e6  # convert to sec (caleb's timestamps in microseconds!)
+    avi_led_events[:,0] = avi_led_events[:, 0] / 1e6  # convert to sec (caleb's timestamps in microseconds!)
     avi_led_codes, latencies = sync.events_to_codes(avi_led_events, nchannels=4, minCodeTime=(led_blink_interval-1))
     avi_led_codes = np.asarray(avi_led_codes)
     print('Converted.')

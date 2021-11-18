@@ -1,15 +1,11 @@
-from datetime import time
 import numpy as np
 import pandas as pd
-import sys,os
+import os
 from tqdm import tqdm
 import subprocess
 from glob import glob
-import joblib
-import argparse
 import json
 import moseq2_extract.io.video as moseq_video
-import subprocess
 import pickle
 import pdb
 
@@ -98,7 +94,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
                                         led_loc=led_loc,
                                         save_path=save_path)
             
-            time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
+            # time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
             
             tmp_event = extract_leds.get_events(leds,timestamps[frame_batches[i]])
 

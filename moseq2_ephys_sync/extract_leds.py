@@ -7,7 +7,7 @@ import numpy as np
 from skimage.feature import canny
 from scipy import ndimage as ndi
 from skimage.filters import threshold_otsu, threshold_multiotsu
-from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors,plot_video_frame
+from moseq2_ephys_sync.plotting import plot_code_chunk, plot_matched_scatter, plot_model_errors, plot_video_frame
 import pdb
 
 
@@ -115,7 +115,6 @@ def clean_by_location(filled_image, labeled_led_img, led_loc):
     
     # Remove non-LED labels
     labeled_led_img[~np.isin(labeled_led_img, idx)] = 0
-    num_features = len(idx)
     
     # Relabel 
     labeled_led_img = relabel_labeled_leds(labeled_led_img)
@@ -148,7 +147,7 @@ def get_roi_sorting(labeled_led_img, led_labels, sort_by):
     
     # LEDs are numbered 1-4; figure out how to order them
     # If not specified, sort by where there's most variance    
-    if sort_by == None: 
+    if sort_by is None: 
         print('Sorting LEDs by variance...if no matches found, check LED sorting!')
         if np.std(leds_xs) > np.std(leds_ys): # sort leds by the x coord:
             sorting = np.argsort(leds_xs)
