@@ -59,7 +59,7 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_c
             batch_timestamps = timestamps[frame_batches[i], 0]
 
             if i==0:
-                plotting.plot_video_frame(frame_data_chunk.std(axis=0),'%s/basler_frame_std.pdf' % save_path)
+                plotting.plot_video_frame(frame_data_chunk.std(axis=0), 600, '%s/basler_frame_std.pdf' % save_path)
 
 
             leds = extract_leds.get_led_data_from_rois(frame_data_chunk=frame_data_chunk, 

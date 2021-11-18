@@ -85,7 +85,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
                                                           finfo=info)
 
             if i==0:
-                plotting.plot_video_frame(frame_data_chunk.std(axis=0),'%s/frame_std.pdf' % save_path)
+                plotting.plot_video_frame(frame_data_chunk.std(axis=0), 600, '%s/frame_std.pdf' % save_path)
 
             if led_rois_from_file:
                 leds = extract_leds.get_led_data_from_rois(frame_data_chunk=frame_data_chunk, led_roi_list=led_roi_list, save_path=save_path)

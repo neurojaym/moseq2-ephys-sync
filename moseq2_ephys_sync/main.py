@@ -20,7 +20,8 @@ arduino_spec=None,
 s1_led_rois_from_file=False,
 s2_led_rois_from_file=False, 
 overwrite_models=False,
-overwrite_extraction=False):
+overwrite_extraction=False,
+leds_to_use=[1,2,3,4]):
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times
     ----
@@ -58,8 +59,12 @@ overwrite_extraction=False):
     mkv_chunk_size = 2000
     basler_chunk_size = 2000  
     avi_chunk_size = 2000
-    num_leds = 4
     ephys_fs = 3e4  # sampling rate in Hz
+
+
+    # Detect num leds 
+    num_leds = len(leds_to_use)
+
 
     # Set up save path
     save_path = f'{base_path}/{output_dir_name}/'
@@ -210,6 +215,7 @@ if __name__ == "__main__" :
     parser.add_argument('--s2_led_rois_from_file', action="store_true", help="Flag to look for lists of points for source 2 led rois")  # need to run separate jup notbook first to get this
     parser.add_argument('--overwrite_models', action="store_true")  # overwrites old models if True (1)
     parser.add_argument('--overwrite_extraction', action="store_true")  # re-does mkv or avi extraction (can take a long time, hence a separate flag)
+    parser.add_argument('--leds_to_use', nargs='*', default=[1,2,3,4], help='Choose a subset of leds (1-indexed) to use if one was broken (syntax: --leds_to_use 1 2 4 --next_arg...')
 
     settings = parser.parse_args(); 
 
@@ -223,6 +229,7 @@ if __name__ == "__main__" :
                 s1_led_rois_from_file=settings.s1_led_rois_from_file,
                 s2_led_rois_from_file=settings.s2_led_rois_from_file,
                 overwrite_models=settings.overwrite_models,
-                overwrite_extraction=settings.overwrite_extraction)
+                overwrite_extraction=settings.overwrite_extraction,
+                leds_to_use=settings.leds_to_use)
 
     

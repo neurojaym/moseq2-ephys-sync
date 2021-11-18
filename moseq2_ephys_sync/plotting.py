@@ -95,8 +95,8 @@ def plot_matched_times(all_predicted_times, t2_codes, t1_codes, n1, n2, save_pat
     plt.close(f)
 
 
-def plot_video_frame(frame,save_path):
-    f = plt.figure(dpi=600)
+def plot_video_frame(frame, dpi, save_path):
+    f = plt.figure(dpi=dpi)
 
     plt.imshow(frame)
     plt.colorbar()

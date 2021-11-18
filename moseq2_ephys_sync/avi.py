@@ -81,7 +81,6 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_
     if not os.path.isfile(avi_led_events_path) or overwrite_extraction:
         print('Loading and processing avi frames...')
         for i in tqdm(range(num_chunks)[0:]):
-        # for i in [1]:
 
             # Load frames in chunk
             frame_data_chunk = np.zeros((len(frame_batches[i]), fsize[0], fsize[1]))
@@ -95,7 +94,7 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_
             
             # Display std for debugging
             if i==0:
-                plotting.plot_video_frame(frame_data_chunk.std(axis=0),'%s/frame_std.png' % save_path)
+                plotting.plot_video_frame(frame_data_chunk.std(axis=0), 600, '%s/frame_std.png' % save_path)
 
             # Find LED ROIs
             leds = extract_leds.get_led_data_with_stds( \
