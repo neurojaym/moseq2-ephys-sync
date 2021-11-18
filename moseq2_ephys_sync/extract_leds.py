@@ -90,15 +90,23 @@ def clean_by_location(filled_image, labeled_led_img, led_loc):
     """
     centers_of_mass = ndi.measurements.center_of_mass(filled_image, labeled_led_img, range(1, np.unique(labeled_led_img)[-1] + 1))  # exclude 0, which is background
     centers_of_mass = [(x/filled_image.shape[0], y/filled_image.shape[1]) for (x,y) in centers_of_mass]  # normalize
-    # x is flipped, y is not
+    # Imshow orientation: x is the vertical axis of the image and runs top to bottom; y is horizontal and runs left to right. (0,0 is top-left)
     if led_loc == 'topright':
         idx = np.asarray([((x < 0.5) and (y > 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
     elif led_loc == 'topleft':
-        idx = np.asarray([((x > 0.5) and (y > 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        idx = np.asarray([((x < 0.5) and (y < 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
     elif led_loc == 'bottomleft':
         idx = np.asarray([((x > 0.5) and (y < 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
     elif led_loc == 'bottomright':
-        idx = np.asarray([((x < 0.5) and (y < 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+        idx = np.asarray([((x > 0.5) and (y > 0.5)) for (x,y) in centers_of_mass]).nonzero()[0]
+    elif led_loc == 'bottomquarter':
+        idx = np.asarray([(x > 0.75) for (x,y) in centers_of_mass]).nonzero()[0]
+    elif led_loc == 'topquarter':
+        idx = np.asarray([(x < 0.25) for (x,y) in centers_of_mass]).nonzero()[0]
+    elif led_loc == 'right_quarter':
+        idx = np.asarray([(y > 0.75) for (x,y) in centers_of_mass]).nonzero()[0]
+    elif led_loc == 'leftquarter':
+        idx = np.asarray([(y < 0.25) for (x,y) in centers_of_mass]).nonzero()[0]
     else:
         RuntimeError('led_loc not recognized')
     
@@ -116,12 +124,18 @@ def clean_by_location(filled_image, labeled_led_img, led_loc):
 
 
 def clean_by_size(labeled_led_img, led_size_thresh):
-    ## erase extra labels:
-    labels_to_erase = [label for label in np.unique(labeled_led_img) if (len(np.where(labeled_led_img==label)[0]) < led_size_thresh and label > 0) ]
+    
+    ## erase small rois:
+    labels_to_erase = [label for label in np.unique(labeled_led_img) if (len(np.where(labeled_led_img==label)[0]) < led_size_thresh[0] and label > 0) ]
     for erase in labels_to_erase:
-        print('Erasing extraneous label #%d based on small size...' % erase)
+        print('Erasing extraneous label #%d based on too small size...' % erase)
         labeled_led_img[labeled_led_img==erase] = 0
     
+    labels_to_erase = [label for label in np.unique(labeled_led_img) if (len(np.where(labeled_led_img==label)[0]) > led_size_thresh[1] and label > 0) ]
+    for erase in labels_to_erase:
+        print('Erasing extraneous label #%d based on too large size...' % erase)
+        labeled_led_img[labeled_led_img==erase] = 0
+
     # Relabel 
     labeled_led_img = relabel_labeled_leds(labeled_led_img)
 
@@ -163,14 +177,17 @@ def extract_roi_events(labeled_led_img, led_labels, sorting, frame_data_chunk, m
         led_y = np.where(labeled_led_img==led_labels[sorting[i]])[1]
         led = frame_data_chunk[:,led_x,led_y].mean(axis=1) #on/off block signals
     
-        # If using avi, the range is pretty small, so use otsu to pick a good dividing number
+        # If using avi, the range is pretty small, so use otsu to pick a good dividing number, then simplify to 0 or 1.
         if movie_type == 'avi':
-            led_thresh = threshold_otsu(led)
+            led_on_thresh = threshold_otsu(led)
+            detection_vals = (led > led_on_thresh).astype('int')  # 0 or 1 --> diff is -1 or 1
+            led_event_thresh = 0
         elif movie_type == 'mkv':
-            led_thresh = 2e4
-    
-        led_on = np.where(np.diff(led) > led_thresh)[0]   #rise indices
-        led_off = np.where(np.diff(led) < -led_thresh)[0]   #fall indices
+            detection_vals = led
+            led_event_thresh = 2e4
+
+        led_on = np.where(np.diff(detection_vals) > led_event_thresh)[0]   #rise indices
+        led_off = np.where(np.diff(detection_vals) < (-1*led_event_thresh))[0]   #fall indices
         led_vec = np.zeros(frame_data_chunk.shape[0])
         led_vec[led_on] = 1
         led_vec[led_off] = -1
@@ -181,18 +198,18 @@ def extract_roi_events(labeled_led_img, led_labels, sorting, frame_data_chunk, m
     return leds
 
 
-def check_led_order(leds):
+def check_led_order(leds, num_leds):
     reverse = 0
     num_events_per_led = np.sum(leds!=0, axis=1)
     max_event_idx = np.where(num_events_per_led == np.max(num_events_per_led))[0]
     if max_event_idx == 0:
         reverse = 1
-    elif max_event_idx == 3:
+    elif max_event_idx == (num_leds-1):
         pass
     elif len(max_event_idx) > 1:
-        if (0 in max_event_idx) and not (3 in max_event_idx):
+        if (0 in max_event_idx) and not ((num_leds-1) in max_event_idx):
             reverse = 1
-        elif (3 in max_event_idx) and not (0 in max_event_idx):
+        elif ((num_leds-1) in max_event_idx) and not (0 in max_event_idx):
             pass
         else:
             Warning('Multiple max events in LEDs and was not first or last in sort!')
@@ -231,7 +248,6 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
     # Get initial labeled image
     num_features, filled_image, labeled_led_img = extract_initial_labeled_image(frames_uint8, movie_type)
     
-    
     # If too many features, try a series of cleaning steps. Labeled_leds has 0 for background, then 1,2,3...for ROIs of interest
 
     # 
@@ -256,7 +272,7 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
     # If still too many features, remove small ones
     if (num_features > num_leds):
         print('Oops! Number of features (%d) did not match the number of LEDs (%d)' % (num_features,num_leds))
-        size_thresh = 20
+        size_thresh = (20,100)  # min,max
         labeled_led_img = clean_by_size(labeled_led_img, size_thresh)
     
 
@@ -264,18 +280,17 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
     image_to_show = np.copy(labeled_led_img)
     # for i in range(1,5):
     #     image_to_show[labeled_leds==(sorting[i-1]+1)] = i
-    plot_video_frame(image_to_show,'%s/frame_%d_led_labels_preEvents.png' % (save_path,chunk_num) )
+    plot_video_frame(image_to_show, 200, '%s/frame_%d_led_labels_preEvents.png' % (save_path,chunk_num) )
 
+    led_labels = [label for label in np.unique(labeled_led_img) if label > 0 ]
+    assert led_labels == sorted(led_labels)  # note that these labels aren't guaranteed only the correct ROIs yet... but the labels should be strictly sorted at this point.
+    print(f'Found {len(led_labels)} LED ROIs after size- and location-based cleaning...')        
 
     # At this point, sometimes still weird spots, but they're roughly LED sized.
     # So, to distinguish, get event data and then look for things that don't 
     # look like syncing LEDs in that data.
 
-    led_labels = [label for label in np.unique(labeled_led_img) if label > 0 ]
-    assert led_labels == sorted(led_labels)
-    print(f'Found {len(led_labels)} LED ROIs after size- and location-based cleaning...')        
-    
-    # At this point, we use led_labels to extract events for each ROI.
+    # We use led_labels to extract events for each ROI.
     # sorting will be a nLEDs-length list, zero-indexed sort based on ROI horizontal or vertical position.
     # leds wil be an np.array of size (nLEDs, nFrames) with values 1 (on) and -1 (off) for events,
         #  and row index is the sort value.
@@ -287,7 +302,7 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
 
     # In the ideal case, there are 4 ROIs, extract events, double check LED 4 is switching each time, and we're done.
     if leds.shape[0] == num_leds:
-        reverse = check_led_order(leds)
+        reverse = check_led_order(leds, num_leds)
     else:
         # Sometimes though you get little contaminating blips that look like LEDs.
         # They don't tend to have many events -- remove blip with lowest num of events.
@@ -302,16 +317,20 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
             sorting = sorting[row_bool]  # remove from sort
             
         # Figure out which LED is #4
-        reverse = check_led_order(leds)
+        reverse = check_led_order(leds, num_leds)
     
     if reverse:
         leds = leds[::-1,:]
 
-    # Re-plot labeled led img, with remaining four led labels mapped to their sort order
+    # Re-plot labeled led img, with remaining four led labels mapped to their sort order.
+    # Use tmp because if you remap, say, 2 --> 3 before looking for 3, then when you look for 3, you'll also find 2.
     image_to_show = np.copy(labeled_led_img)
+    tmp_idx_to_update = []
     for i in range(len(sorting)):
-        image_to_show[image_to_show == led_labels[sorting[i]]] = (i+1)
-    plot_video_frame(image_to_show,'%s/frame_%d_sort_order_postEvents.png' % (save_path,chunk_num) )
+        tmp_idx_to_update.append(image_to_show == led_labels[sorting[i]])
+    for i in range(len(sorting)):
+        image_to_show[tmp_idx_to_update[i]] = (i+1)
+    plot_video_frame(image_to_show, 200, '%s/frame_%d_sort_order_postEvents.png' % (save_path,chunk_num) )
 
     return leds
     
