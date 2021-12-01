@@ -90,7 +90,6 @@ def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
     arduino_data_path = util.find_file_through_glob_and_symlink(base_path, file_glob)
         
     # Check if header is present
-    
     with open(arduino_data_path, 'r') as f:
         first_row = f.readline().strip('\r\n').split(',')
     if first_row[0] == 'time':
@@ -102,16 +101,16 @@ def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
 
     if header:
         dtype_dict = {col: header_val_dtypes[col] for col in colnames}
-        data = pd.read_csv(arduino_data_path, header=0, dtype=dtype_dict, error_bad_lines=False)  # header=0 means first row
+        data = pd.read_csv(arduino_data_path, header=0, dtype=dtype_dict, index_col=False)  # header=0 means first row
     else:
         dtype_dict = {colname: dtype for colname, dtype in zip(colnames, dtypes)}
         try:
             # Try loading the entire thing first. 
-            data = pd.read_csv(arduino_data_path, header=0, names=colnames, dtype=dtype_dict, error_bad_lines=False)
+            data = pd.read_csv(arduino_data_path, header=0, names=colnames, dtype=dtype_dict, index_col=False)
         except ValueError:
             try:
                 # If needed, try ignoring the last line. This is slower so we don't use as default.
-                data = pd.read_csv(arduino_data_path, header=0, names=colnames, dtype=dtype_dict, error_bad_lines=False, warn_bad_lines=True, skipfooter=1)
+                data = pd.read_csv(arduino_data_path, header=0, names=colnames, dtype=dtype_dict, index_col=False, warn_bad_lines=True, skipfooter=1)
             except:
                 raise RuntimeError('Could not load arduino data -- check text file for weirdness. \
                 Most common issues text file issues are: \
