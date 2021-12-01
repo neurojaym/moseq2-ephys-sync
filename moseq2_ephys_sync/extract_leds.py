@@ -81,6 +81,7 @@ def extract_initial_labeled_image(frames_uint8, movie_type):
     edges = canny(thresh_px/255.) ## find the edges
     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
     labeled_led_img, num_features = ndi.label(filled_image) ## get the clusters
+
     return num_features, filled_image, labeled_led_img
 
 
@@ -305,7 +306,7 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
     else:
         # Sometimes though you get little contaminating blips that look like LEDs.
         # They don't tend to have many events -- remove blip with lowest num of events.
-        while leds.shape[0] != num_leds:
+        while leds.shape[0] > num_leds:
             # Choose idx to remove
             min_event_idx = np.argmin(np.sum(leds!=0, axis=1))
             row_bool = ~np.isin(np.arange(leds.shape[0]),min_event_idx)
