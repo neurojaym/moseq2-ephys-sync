@@ -30,7 +30,7 @@ def plot_code_chunk(first_source_led_codes, first_source, second_source_led_code
     axarr[1].set_title(second_source)
     
 
-    plt.xlim([0,300])
+    plt.xlim([-5,300])
     plt.xlabel('time (sec)')
     plt.ylabel('bit code')
     plt.legend()
