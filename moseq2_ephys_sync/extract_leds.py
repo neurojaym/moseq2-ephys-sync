@@ -266,7 +266,7 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
         print('Too many features, using provided LED position...')
         labeled_led_img = clean_by_location(filled_image, labeled_led_img, led_loc)
 
-    # Recompute num features (-1 for background)
+    # Recompute num features (minus 1 for background)
     num_features = len(np.unique(labeled_led_img)) - 1
 
     # If still too many features, remove small ones

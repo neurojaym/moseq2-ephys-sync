@@ -111,7 +111,7 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_
     
     ############### Convert the LED events to bit codes ############### 
     avi_led_events[:,0] = avi_led_events[:, 0] / 1e6  # convert to sec (caleb's timestamps in microseconds!)
-    avi_led_codes, latencies = sync.events_to_codes(avi_led_events, nchannels=4, minCodeTime=(led_blink_interval-1))
+    avi_led_codes, latencies = sync.events_to_codes(avi_led_events, nchannels=num_leds, minCodeTime=(led_blink_interval-1))
     avi_led_codes = np.asarray(avi_led_codes)
     print('Converted.')
 

@@ -62,7 +62,8 @@ leds_to_use=[1,2,3,4]):
     ephys_fs = 3e4  # sampling rate in Hz
 
 
-    # Detect num leds 
+    # Detect num leds
+    assert '4' in leds_to_use, "Code expects that last LED is LED 4 (switching every interval)" 
     num_leds = len(leds_to_use)
 
 
@@ -94,7 +95,7 @@ leds_to_use=[1,2,3,4]):
         assert not (led_loc and s1_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
         first_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s1_led_rois_from_file, overwrite_extraction)
     elif first_source == 'arduino' or first_source=='txt':
-        first_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
+        first_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, arduino_spec)
     elif first_source == 'basler':
         first_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, s1_led_rois_from_file, overwrite_models)
     elif first_source == 'avi':
@@ -111,7 +112,7 @@ leds_to_use=[1,2,3,4]):
         assert not (led_loc and s2_led_rois_from_file), "User cannot specify both MKV led location (top right, etc) and list of exact MKV LED ROIs!"
         second_source_led_codes = mkv.mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size, led_loc, s2_led_rois_from_file, overwrite_extraction)
     elif second_source == 'arduino' or second_source=='txt':
-        second_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, led_blink_interval, arduino_spec)
+        second_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, arduino_spec)
     elif second_source == 'basler':
         second_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, s2_led_rois_from_file, overwrite_models)
     elif first_source == 'avi':
@@ -130,6 +131,8 @@ leds_to_use=[1,2,3,4]):
     plotting.plot_code_chunk(first_source_led_codes, first_source, second_source_led_codes, second_source, save_path)
 
 
+
+
     #### SYNCING :D ####
     print('Syncing the two sources...')
     # Returns two columns of matched event times. All times should be in seconds by here
@@ -138,6 +141,8 @@ leds_to_use=[1,2,3,4]):
                                   second_source_led_codes[:,0],
                                   second_source_led_codes[:,1],
                                   minMatch=10,maxErr=0,remove_duplicates=True ))
+
+    pdb.set_trace()
 
     assert len(matches) > 0, 'No matches found -- if using a movie, double check LED extractions and correct assignment of LED order'
 

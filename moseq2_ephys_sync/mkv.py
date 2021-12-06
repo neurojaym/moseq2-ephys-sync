@@ -120,7 +120,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
 
 
     ############### Convert the LED events to bit codes ############### 
-    mkv_led_codes, latencies = sync.events_to_codes(mkv_led_events, nchannels=4, minCodeTime=(led_blink_interval-1))
+    mkv_led_codes, latencies = sync.events_to_codes(mkv_led_events, nchannels=num_leds, minCodeTime=(led_blink_interval-1))
     mkv_led_codes = np.asarray(mkv_led_codes)
     print('Converted.')
 
