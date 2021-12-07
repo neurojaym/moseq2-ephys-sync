@@ -1,19 +1,17 @@
-from datetime import time
 import numpy as np
 import pandas as pd
-import sys,os
+import os
 from tqdm import tqdm
 import subprocess
 from glob import glob
-import joblib
-import argparse
 import json
 import moseq2_extract.io.video as moseq_video
-import subprocess
 import pickle
 import pdb
 
-import plotting, extract_leds, sync
+import moseq2_ephys_sync.plotting as plotting
+import moseq2_ephys_sync.extract_leds as extract_leds
+import moseq2_ephys_sync.sync as sync
 
 def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_size=2000, led_loc=None, led_rois_from_file=False, overwrite_mkv_extraction=False):
     """
@@ -30,7 +28,8 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
 
     # Load timestamps and mkv info if exist, otherwise calculate
     if (os.path.exists(info_path) and os.path.exists(timestamp_path) ):
-        
+        print('Loading preexisting mkv timestamps...')
+
         with open(info_path,'r') as f:
             info = json.load(f)
 
@@ -38,6 +37,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
         timestamps = timestamps.values[:,1].flatten()
 
     else:
+        print('Loading mkv timestamps de novo...')
         ## get info on the depth file; we'll use this to see how many frames we have
         info,timestamps = get_mkv_info(depth_path,stream=stream_names['DEPTH'])
 
@@ -81,15 +81,20 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
                                                           finfo=info)
 
             if i==0:
-                plotting.plot_video_frame(frame_data_chunk.std(axis=0),'%s/frame_std.pdf' % save_path)
+                plotting.plot_video_frame(frame_data_chunk.std(axis=0), 600, '%s/frame_std.pdf' % save_path)
 
             if led_rois_from_file:
                 leds = extract_leds.get_led_data_from_rois(frame_data_chunk=frame_data_chunk, led_roi_list=led_roi_list, save_path=save_path)
             else:
-                leds = extract_leds.get_led_data_with_stds(frame_data_chunk=frame_data_chunk,
-                                num_leds=num_leds,chunk_num=i, led_loc=led_loc, save_path=save_path)
+                leds = extract_leds.get_led_data_with_stds( \
+                                        frame_data_chunk=frame_data_chunk,
+                                        movie_type='mkv',
+                                        num_leds=num_leds,
+                                        chunk_num=i,
+                                        led_loc=led_loc,
+                                        save_path=save_path)
             
-            time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
+            # time_offset = frame_batches[i][0] ## how many frames away from first chunk's  #### frame_chunks[0,i]
             
             tmp_event = extract_leds.get_events(leds,timestamps[frame_batches[i]])
 
@@ -111,11 +116,13 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
     else:
         mkv_led_events = np.load(mkv_led_events_path)['led_events']
 
-        
+    print('Successfullly extracted mkv leds, converting to codes...')    
+
 
     ############### Convert the LED events to bit codes ############### 
-    mkv_led_codes, latencies = sync.events_to_codes(mkv_led_events, nchannels=4, minCodeTime=(led_blink_interval-1))
+    mkv_led_codes, latencies = sync.events_to_codes(mkv_led_events, nchannels=num_leds, minCodeTime=(led_blink_interval-1))
     mkv_led_codes = np.asarray(mkv_led_codes)
+    print('Converted.')
 
     return mkv_led_codes
 
