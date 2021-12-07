@@ -13,12 +13,18 @@ def find_file_through_glob_and_symlink(path, pattern):
     pattern: glob pattern, eg *.txt for arduino data
     """
 
+    # Check path exists
     assert os.path.exists(path), f'Path {path} does not exist'
+
+    # Simply look for file
     files = glob(os.path.join(path,pattern))
+
+    # Remove known confounders (eg we use '*.txt' for arduino files, but sometimes we also have 'depth_ts.txt')
     files = remove_confounders(files, pattern[-3:])
 
+
+    # If no files found, maybe we have to follow a sym-linked depth-video back to the raw data directory
     if len(files) == 0:    
-        # Find symlinked depth video (could eventually make dynamic but it's a pain)
         try_avi = glob(os.path.join(path,f'*depth.avi'))[0]
         if len(try_avi) == 0:
             try_mkv = glob(os.path.join(path,f'*depth.mkv'))[0]
@@ -28,13 +34,13 @@ def find_file_through_glob_and_symlink(path, pattern):
         else:
             depth_path = try_avi
         
-        # Follow it to find desired file
+        # Follow the symlink to find desired file
         sym_path = os.readlink(depth_path)
         containing_dir = os.path.dirname(sym_path)
         files = glob(os.path.join(containing_dir, pattern))
         files = remove_confounders(files, pattern[-3:])
         
-        
+    # Sanitize output
     assert len(files) > 0, 'Found no files matching pattern'
     assert len(files) == 1, 'Found more than one file matching pattern!'
 
