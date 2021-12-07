@@ -89,6 +89,7 @@ def load_arduino_data(base_path, colnames, dtypes, file_glob='*.txt'):
         'ledState': 'int8',  # same as olfled
         'pwm': 'int8',
         'pwmVal': 'int8',  # same as pwm
+        'dac': 'float64',
         'mouseROI': 'int8',
         'odor_ttl': 'int8',
         'wheel': 'int64'    
