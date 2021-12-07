@@ -220,7 +220,7 @@ if __name__ == "__main__" :
     parser.add_argument('--s2_led_rois_from_file', action="store_true", help="Flag to look for lists of points for source 2 led rois")  # need to run separate jup notbook first to get this
     parser.add_argument('--overwrite_models', action="store_true")  # overwrites old models if True (1)
     parser.add_argument('--overwrite_extraction', action="store_true")  # re-does mkv or avi extraction (can take a long time, hence a separate flag)
-    parser.add_argument('--leds_to_use', nargs='*', default=[1,2,3,4], help='Choose a subset of leds (1-indexed) to use if one was broken (syntax: --leds_to_use 1 2 4 --next_arg...')
+    parser.add_argument('--leds_to_use', nargs='*', default=['1', '2' , '3' , '4'], help='Choose a subset of leds (1-indexed) to use if one was broken (syntax: --leds_to_use 1 2 4 --next_arg...')
 
     settings = parser.parse_args(); 
 
