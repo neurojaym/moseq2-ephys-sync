@@ -8,7 +8,7 @@ To get started, try the following in termanal (these instructions assume you're 
 4. `git clone https://github.com/guitchounts/moseq2-ephys-sync.git`
 5. `cd ./moseq2-ephys-sync/`
 6. `python setup.py install`
-7. `pip install git+ssh://git@github.com/dattalab/moseq2-extract.git@autosetting-params` (alternatively, try: `pip install git+https://github.com/dattalab/moseq2-extract.git@autosetting-params`)
+7. `pip install git+ssh://git@github.com/dattalab/moseq2-extract.git@autosetting-params` (alternatively, try: `pip install git+https://github.com/dattalab/moseq2-extract.git@autosetting-params`) (alternatively, try using conda)
 8. `conda install scikit-learn=0.24` (moseq2-extract pins `scikit` to an earlier version; need to update to `0.24`
 9. `module load ffmpeg`
 
@@ -47,3 +47,5 @@ To use the resulting models, try:
 3. `video_times = ephys_model.predict(ephys_times.reshape(-1,1))` (assuming times are `1D` arrays)
 4. `video_model = joblib.load('input_directory/sync/video_timebase.p')`
 5. `ephys_times = video_model.predict(video_times.reshape(-1,1))`
+
+Test change

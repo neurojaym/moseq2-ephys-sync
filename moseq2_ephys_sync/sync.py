@@ -4,7 +4,7 @@ Tools for creating bit codes from LED and ephys TTLs, and matching them
 import os
 import numpy as np
 import copy
-
+import pdb
 
 def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03_codes=0
     """
@@ -12,7 +12,7 @@ def events_to_codes(events, nchannels, minCodeTime): # swap_12_codes = 1,swap_03
     ----------
     events : 2d array
         Array of pixel clock events (single channel transitions) where:
-            events[:,0] = times
+            events[:,0] = times (in n samples??)
             events[:,1] = channels
             events[:,2] = directions
     nchannels : int
