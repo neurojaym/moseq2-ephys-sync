@@ -51,15 +51,18 @@ def get_col_info(spec):
     elif spec == 'fictive_olfaction':
         arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'yaw', 'roll', 'pitch', 'accx', 'accy', 'accz', 'therm', 'olfled', 'pwm']
         arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'float64', 'float64', 'int32', 'uint8', 'uint8']
-    elif spec == 'basic_thermistor':
+    elif spec == 'basic_thermistor' or spec == 'bucket':
         arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'yaw', 'roll', 'pitch', 'accx', 'accy', 'accz', 'therm']
         arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'float64', 'float64', 'float64', 'float64', 'int32']
-    elif spec == 'odor_on_wheel':
-        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'wheel', 'thermistor', 'odor_ttl']
-        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'int64', 'int64', 'uint8']
     elif spec == 'header':  # headers in txt files
         arduino_colnames = None
         arduino_dtypes = None
+    elif spec == "odor_on_wheel_notherm":
+        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'wheel']
+        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'int64']
+    elif spec == "odor_on_wheel":
+        arduino_colnames = ['time', 'led1', 'led2', 'led3', 'led4', 'wheel','thermistor','odor_ttl']
+        arduino_dtypes = ['int64', 'int64', 'int64', 'int64','int64', 'int64','int64','int64']
     return arduino_colnames, arduino_dtypes
 
 

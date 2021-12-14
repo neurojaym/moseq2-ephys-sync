@@ -123,7 +123,7 @@ leds_to_use=[1,2,3,4]):
 
 
     # Save the codes for use later
-    np.savez('%s/codes.npz' % save_path, first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
+    np.savez('%s/codes_%s_%s.npz' % (save_path,first_source,second_source), first_source_codes=first_source_led_codes, second_source_codes=second_source_led_codes)
 
 
     # Visualize a small chunk of the bit codes. do you see a match? 
@@ -142,12 +142,12 @@ leds_to_use=[1,2,3,4]):
                                   second_source_led_codes[:,1],
                                   minMatch=10,maxErr=0,remove_duplicates=True ))
 
-    pdb.set_trace()
+    #pdb.set_trace()
 
     assert len(matches) > 0, 'No matches found -- if using a movie, double check LED extractions and correct assignment of LED order'
 
     ## Plot the matched codes against each other:
-    plotting.plot_matched_scatter(matches, save_path)
+    plotting.plot_matched_scatter(matches, save_path,first_source,second_source)
 
 
 
@@ -182,7 +182,7 @@ leds_to_use=[1,2,3,4]):
 
         # Learn to predict s1 from s2. Syntax is fit(X,Y).
         mdl = PiecewiseRegressor(verbose=True,
-                                binner=KBinsDiscretizer(n_bins=10))
+                                binner=KBinsDiscretizer(n_bins=4))
         mdl.fit(s2.reshape(-1, 1), s1)
 
         outname = f'{n1}_from_{n2}'

@@ -66,7 +66,7 @@ def mkv_workflow(base_path, save_path, num_leds, led_blink_interval, mkv_chunk_s
     if led_rois_from_file:
         led_roi_list = load_led_rois_from_file(base_path)
 
-    mkv_led_events_path = '%s_led_events.npz' % os.path.splitext(depth_path)[0]
+    mkv_led_events_path = '%s/led_events.npz' % save_path
 
     # Do the loading
     if not os.path.isfile(mkv_led_events_path) or overwrite_mkv_extraction:

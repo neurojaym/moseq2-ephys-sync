@@ -35,13 +35,13 @@ def plot_code_chunk(first_source_led_codes, first_source, second_source_led_code
     plt.ylabel('bit code')
     plt.legend()
 
-    f.savefig(f'{save_path}/{fname}.png')
+    f.savefig(f'{save_path}/{fname}_{first_source}_{second_source}.png')
 
     plt.close(f)
 
 
 ## plot the matched codes against each other:
-def plot_matched_scatter(matches,save_path):
+def plot_matched_scatter(matches,save_path,first_source,second_source):
 
     f = plt.figure(dpi=600)
 
@@ -54,7 +54,7 @@ def plot_matched_scatter(matches,save_path):
     plt.xlabel('time of ephys codes')
     plt.ylabel('time of video codes')
 
-    f.savefig('%s/matched_codes_scatter.png' % save_path)
+    f.savefig(f'{save_path}/matched_codes_scatter_{first_source}_{second_source}.png')
 
     plt.close(f)
 
@@ -66,11 +66,8 @@ def plot_model_errors(time_errors, save_path, outname, fname='model_errors'):
 
     plt.title('%.2f sec. mean abs. error in second source Times' % np.abs(np.mean(time_errors)))
     plt.xlabel('Predicted - actual matched video code times')
-
     f.savefig(f'{save_path}/{fname}_{outname}.png')
-
     plt.close(f)
-
 
 ## plot the codes on the same time scale
 def plot_matched_times(all_predicted_times, t2_codes, t1_codes, n1, n2, save_path, outname):
@@ -89,11 +86,8 @@ def plot_matched_times(all_predicted_times, t2_codes, t1_codes, n1, n2, save_pat
     plt.title('Matched times (ok if not entirely overlapping)')
 
     plt.legend()
-
     f.savefig(f'{save_path}/matched_codes_video_time_{outname}.png')
-
     plt.close(f)
-
 
 def plot_video_frame(frame, dpi, save_path):
     f = plt.figure(dpi=dpi)
