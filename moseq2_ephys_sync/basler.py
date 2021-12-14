@@ -28,7 +28,8 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_c
     vr = decord.VideoReader(basler_path, ctx=decord.cpu(0), num_threads=8)
     num_frames = len(vr)
     timestamps = vr.get_frame_timestamp(np.arange(0,num_frames))  # blazing fast. nframes x 2 (beginning,end)
-    timestamps = timestamps*2  # when basler records at 120 fps, timebase is halved :/
+    print('Assuming Basler recorded at 120 fps...')
+    # timestamps = timestamps*2  # when basler records at 120 fps, timebase is halved :/
 
     ############### Cycle through the frame chunks to get all LED events: ###############
     
@@ -46,13 +47,20 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_c
         for i in tqdm(range(num_chunks)[0:]):
             
             print(frame_batches[i])
-            frame_data_chunk = color.rgb2gray(vr.get_batch(list(frame_batches[i])).asnumpy())  # appears to have memory leak issue, delete var after each iteration (see https://www.kaggle.com/leighplt/decord-videoreader, https://github.com/dmlc/decord/issues?q=is%3Aissue+is%3Aopen+memory)
+            # NO! The skimage functions convert to float all at once, this causes memory issues!
+            # NB: just request 100 GB ram :/
+            frame_data_chunk = color.rgb2gray(vr.get_batch(list(frame_batches[i])).asnumpy())  
+
+            # rgb_frame_data_chunk = vr.get_batch(list(frame_batches[i])).asnumpy()  # instead, convert one frame at a time. Size of return is N x W x H x 3.
+            # frame_data_chunk = np.zeros(rgb_frame_data_chunk.shape[0:-1], dtype='uint8') # N x W x H
+            # for j in range(rgb_frame_data_chunk.shape[0]):
+            #     frame_data_chunk[j,:,:] = color.rgb2gray(rgb_frame_data_chunk)
+            
             batch_timestamps = timestamps[frame_batches[i], 0]
 
-            pdb.set_trace()
-
             if i==0:
-                plotting.plot_video_frame(frame_data_chunk.std(axis=0),'%s/basler_frame_std.pdf' % save_path)
+                plotting.plot_video_frame(frame_data_chunk.std(axis=0), 600, '%s/basler_frame_std.pdf' % save_path)
+
 
             leds = extract_leds.get_led_data_from_rois(frame_data_chunk=frame_data_chunk, 
                                                     led_roi_list=led_roi_list,
@@ -74,7 +82,6 @@ def basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_c
     else:
         basler_led_events = np.load(basler_led_events_path)['led_events']
 
-    pdb.set_trace()
     ############### Convert the LED events to bit codes ############### 
     basler_led_codes, latencies = sync.events_to_codes(basler_led_events, nchannels=4, minCodeTime=(led_blink_interval-1))  
     basler_led_codes = np.asarray(basler_led_codes)
