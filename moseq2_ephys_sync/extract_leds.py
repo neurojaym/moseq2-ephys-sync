@@ -59,29 +59,32 @@ def relabel_labeled_leds(labeled_led_img):
             labeled_led_img[labeled_led_img == val] = i
     return labeled_led_img
 
-def extract_initial_labeled_image(frames_uint8, movie_type):
-    """Use std (usually) of frames and otsu thresholding to extract LED positions
-    movie_type:
+def extract_initial_labeled_image(frames_uint8, movie_type, top_down=False):
+    """Use std (usually) of frames to find LED ROIS. Since avi's recorded in top-down configuration are 16-bit, no OTSU thresholding needed.:
     """
+
     std_px = frames_uint8.std(axis=0)    
     mean_px = frames_uint8.mean(axis=0)
-    vary_px = std_px if np.std(std_px) < np.std(mean_px) else mean_px # pick the one with the lower variance
-    
-    # Get threshold for LEDs
-    if movie_type == 'mkv':
-        thresh = threshold_otsu(vary_px)
-    elif movie_type == 'avi':
-        thresh = threshold_multiotsu(vary_px,5)[-1]  # take highest threshold from multiple
-    
-    # Get mask
-    thresh_px = np.copy(vary_px)
-    thresh_px[thresh_px<thresh] = 0
-    
-    # Initial regions from mask
-    edges = canny(thresh_px/255.) ## find the edges
-    filled_image = ndi.binary_fill_holes(edges) ## fill its edges
-    labeled_led_img, num_features = ndi.label(filled_image) ## get the clusters
+    vary_px = std_px if np.std(std_px) < np.std(mean_px) else mean_px 
+    if top_down:    
+    	# Initial regions from mask
+    	edges = canny(vary_px/255.) ## find the edges
+    	filled_image = ndi.binary_fill_holes(edges) ## fill its edges
+    	labeled_led_img, num_features = ndi.label(filled_image) ## get the clusters
+    else:
+	# Get threshold for LEDs
+        if movie_type == 'mkv':
+            thresh = threshold_otsu(vary_px)
+        elif movie_type == 'avi':
+            thresh = threshold_multiotsu(vary_px,5)[-1]  # take highest threshold from multiple
+        # Get mask
+        thresh_px = np.copy(vary_px)
+        thresh_px[thresh_px<thresh] = 0
 
+        edges = canny(thresh_px/255.)
+        filled_image = ndi.binary_fill_holes(edges) ## fill its edges
+        labeled_led_img, num_features = ndi.label(filled_image) ## get the clusters
+    
     return num_features, filled_image, labeled_led_img
 
 
@@ -167,7 +170,7 @@ def get_roi_sorting(labeled_led_img, led_labels, sort_by):
     
     return sorting
 
-def extract_roi_events(labeled_led_img, led_labels, sorting, frame_data_chunk, movie_type):
+def extract_roi_events(labeled_led_img, led_labels, sorting, frame_data_chunk, movie_type,top_down=True):
     
     # List to hold events by frame
     leds = []
@@ -177,12 +180,16 @@ def extract_roi_events(labeled_led_img, led_labels, sorting, frame_data_chunk, m
         led_y = np.where(labeled_led_img==led_labels[sorting[i]])[1]
         led = frame_data_chunk[:,led_x,led_y].mean(axis=1) #on/off block signals
     
-        # If using avi, the range is pretty small, so use otsu to pick a good dividing number, then simplify to 0 or 1.
-        if movie_type == 'avi':
+        # If using avi(8bit), the range is pretty small, so use otsu to pick a good dividing number, then simplify to 0 or 1.
+        if movie_type == 'avi' and not top_down:
             led_on_thresh = threshold_otsu(led)
             detection_vals = (led > led_on_thresh).astype('int')  # 0 or 1 --> diff is -1 or 1
             led_event_thresh = 0
         elif movie_type == 'mkv':
+            detection_vals = led
+            led_event_thresh = 2e4
+        elif movie_type == 'avi' and top_down:
+            #print('top_down extracting...')
             detection_vals = led
             led_event_thresh = 2e4
 
@@ -221,7 +228,7 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
     """
     Uses std across frames + otsu + cleaning + knowledge about the event sequence to find LED ROIs in a chunk of frames.
     In AVIs, since they're clipped to int8, cleaning is harder. Might be able to solve this by casting to int16 and bumping any value above 250 to 2^16, but it's risky.
-    
+    Note that AVI's collected in top-down configuration are still 16bit, and tehrefore do not need OTSU thresholding for LED detection.  
     frame_data_chunk: nframes, nrows, ncols
     movie_type (str): 'mkv' or 'avi'. Will adjust thresholding beacuse currently avi's with caleb's clipping (uint8) don't have strong enough std
     
@@ -241,25 +248,20 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
         print('Flipping image vertically')
         frame_data_chunk = frame_data_chunk[:,::-1,:]
     
-
+    print ('Processing Chunk #', chunk_num)
     # Convert to uint8
     frames_uint8 = np.asarray(frame_data_chunk / frame_data_chunk.max() * 255, dtype='uint8')
+    
+    # for top-down configuration, get rid of azure reflections in the center of image
+    cutout_window = 60
+    frames_uint8[:,int(frames_uint8.shape[1]/2)-cutout_window:int(frames_uint8.shape[1]/2)+cutout_window,
+            int(frames_uint8.shape[2]/2)-cutout_window:int(frames_uint8.shape[2]/2)+cutout_window]=0 
 
+	
     # Get initial labeled image
-    num_features, filled_image, labeled_led_img = extract_initial_labeled_image(frames_uint8, movie_type)
+    num_features, filled_image, labeled_led_img = extract_initial_labeled_image(frames_uint8, movie_type, top_down=True)
     
     # If too many features, try a series of cleaning steps. Labeled_leds has 0 for background, then 1,2,3...for ROIs of interest
-
-    # 
-    # first try thresholding again, excluding very low values
-    # if num_features > num_leds:
-    #     print('Too many features, using second thresholding step...')
-    #     thresh2 = threshold_otsu(thresh_px[thresh_px > 5])
-    #     thresh_px[thresh_px < thresh2] = 0
-    #     edges = canny(thresh_px/255.) ## find the edges
-    #     filled_image = ndi.binary_fill_holes(edges) ## fill its edges
-    #     labeled_leds, num_features = ndi.label(filled_image) ## get the clusters
-    #     # plot_video_frame(labeled_leds,'%s/frame_%d_led_labels_secondThreshold.png' % (save_path,chunk_num))
 
     # If still too many features, check for location parameter and filter by it
     if (num_features > num_leds) and led_loc:
@@ -272,7 +274,7 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
     # If still too many features, remove small ones
     if (num_features > num_leds):
         print('Oops! Number of features (%d) did not match the number of LEDs (%d)' % (num_features,num_leds))
-        size_thresh = (20,100)  # min,max
+        size_thresh = (28,100)  # min,max
         labeled_led_img = clean_by_size(labeled_led_img, size_thresh)
     
 
@@ -301,26 +303,6 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
 
 
     # In the ideal case, there are 4 ROIs, extract events, double check LED 4 is switching each time, and we're done.
-    if leds.shape[0] == num_leds:
-        reverse = check_led_order(leds, num_leds)
-    else:
-        # Sometimes though you get little contaminating blips that look like LEDs.
-        # They don't tend to have many events -- remove blip with lowest num of events.
-        while leds.shape[0] > num_leds:
-            # Choose idx to remove
-            min_event_idx = np.argmin(np.sum(leds!=0, axis=1))
-            row_bool = ~np.isin(np.arange(leds.shape[0]),min_event_idx)
-            # Remove it
-            print(f'Removing roi #{min_event_idx} based on low event count...')
-            leds = leds[row_bool,:]  # drop row
-            labeled_led_img[labeled_led_img==led_labels[sorting[min_event_idx]]] = 0  # set ROI to bg
-            sorting = sorting[row_bool]  # remove from sort
-            
-        # Figure out which LED is #4
-        reverse = check_led_order(leds, num_leds)
-    
-    if reverse:
-        leds = leds[::-1,:]
 
     # Re-plot labeled led img, with remaining four led labels mapped to their sort order.
     # Use tmp because if you remap, say, 2 --> 3 before looking for 3, then when you look for 3, you'll also find 2.

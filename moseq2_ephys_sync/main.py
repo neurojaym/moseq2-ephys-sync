@@ -4,8 +4,8 @@ import joblib
 import argparse
 from mlinsights.mlmodel import PiecewiseRegressor
 from sklearn.preprocessing import KBinsDiscretizer
-
-import mkv, arduino, ttl, sync, plotting, basler, avi
+#no need for mkv,basler in top-down config
+import arduino, ttl, sync, plotting, avi
 
 import pdb
 
@@ -104,7 +104,7 @@ leds_to_use=[1,2,3,4]):
         raise RuntimeError(f'First source keyword {first_source} not recognized')
 
 
-    print('Dealing with second souce...')
+    print('Dealing with second source...')
     # Deal with second source
     if second_source == 'ttl':
         second_source_led_codes = ttl.ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs)
@@ -115,8 +115,8 @@ leds_to_use=[1,2,3,4]):
         second_source_led_codes, ino_average_fs = arduino.arduino_workflow(base_path, save_path, num_leds, leds_to_use, led_blink_interval, arduino_spec)
     elif second_source == 'basler':
         second_source_led_codes = basler.basler_workflow(base_path, save_path, num_leds, led_blink_interval, basler_chunk_size, s2_led_rois_from_file, overwrite_models)
-    elif first_source == 'avi':
-        second_source_led_codes = avi.avi_workflow(base_path, save_path, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=avi_chunk_size, overwrite_models=overwrite_models)
+    elif second_source == 'avi':
+        second_source_led_codes = avi.avi_workflow(base_path, save_path, num_leds=num_leds, led_blink_interval=led_blink_interval, led_loc=led_loc, avi_chunk_size=avi_chunk_size, overwrite_extraction=overwrite_extraction)
     else:
         raise RuntimeError(f'Second source keyword {second_source} not recognized')
 
@@ -144,14 +144,14 @@ leds_to_use=[1,2,3,4]):
 
     #pdb.set_trace()
 
-<<<<<<< HEAD
+
     ## convert the ephys TTL events to bit codes:
-    ephys_events = np.vstack([ephys_timestamps[abs(channels)<=5],abs(channels[abs(channels)<=5])-1,np.sign(channels[abs(channels)<=5]) ]).T
-    ephys_codes, ephys_latencies = events_to_codes(ephys_events,nchannels=4,minCodeTime=(led_interval-1)*ephys_fs)
-    ephys_codes = np.asarray(ephys_codes)
-=======
+    #ephys_events = np.vstack([ephys_timestamps[abs(channels)<=5],abs(channels[abs(channels)<=5])-1,np.sign(channels[abs(channels)<=5]) ]).T
+    #ephys_codes, ephys_latencies = events_to_codes(ephys_events,nchannels=4,minCodeTime=(led_interval-1)*ephys_fs)
+    #ephys_codes = np.asarray(ephys_codes)
+
     assert len(matches) > 0, 'No matches found -- if using a movie, double check LED extractions and correct assignment of LED order'
->>>>>>> 215fdd2f000480e344271622619719bbb18e1b3a
+
 
     ## Plot the matched codes against each other:
     plotting.plot_matched_scatter(matches, save_path,first_source,second_source)
@@ -163,55 +163,8 @@ leds_to_use=[1,2,3,4]):
     #### Make the models! ####
     print('Modeling the two sources from each other...')
 
-<<<<<<< HEAD
-    matches = np.asarray(match_codes(ephys_codes[:,0] / ephys_fs,  ## converting the ephys times to seconds for matching (led times already in seconds)
-                                  ephys_codes[:,1], 
-                                  led_codes[:,0],
-                                  led_codes[:,1],
-                                  minMatch=10,maxErr=0,remove_duplicates=True ) )
-
-
-    ## plot the matched codes against each other:
-    plot_matched_scatter(matches,save_path)
-
     ####################### Make the models! ####################
-
-    ephys_model = PiecewiseRegressor(verbose=True,
-                               binner=KBinsDiscretizer(n_bins=2))
-    ephys_model.fit(matches[:,0].reshape(-1, 1), matches[:,1])
-
-
-    predicted_video_matches = ephys_model.predict(matches[:,0].reshape(-1, 1) ) ## for checking the error
-
-    predicted_video_times = ephys_model.predict(ephys_codes[:,0].reshape(-1, 1) / ephys_fs ) ## for all predicted times
-
-    joblib.dump(ephys_model, '%s/ephys_timebase.p' % save_path)
-    print('Saved ephys model')
-
-    ## how big are the differences between the matched ephys and video code times ?
-    time_errors = (predicted_video_matches - matches[:,1]) 
-
-    ## plot model errors:
-    plot_model_errors(time_errors,save_path)
-
-    ## plot the codes on the same time scale
-    plot_matches_video_time(predicted_video_times,ephys_codes,led_codes,save_path)
-
-
-    #################################
-
-    video_model = PiecewiseRegressor(verbose=True,
-                               binner=KBinsDiscretizer(n_bins=2))
-    video_model.fit(matches[:,1].reshape(-1, 1), matches[:,0])
-
-
-    predicted_ephys_matches = video_model.predict(matches[:,1].reshape(-1, 1) )
-
-    predicted_ephys_times = video_model.predict(led_codes[:,0].reshape(-1, 1) )
-
-    joblib.dump(video_model, '%s/video_timebase.p' % save_path)
-    print('Saved video model')
-=======
+ 
     # Rename for clarity.
     ground_truth_source1_event_times = matches[:,0]
     ground_truth_source2_event_times = matches[:,1]
@@ -255,7 +208,7 @@ leds_to_use=[1,2,3,4]):
         # Save
         joblib.dump(mdl, f'{save_path}/{outname}.p')
         print(f'Saved model that predicts {n1} from {n2}')
->>>>>>> 215fdd2f000480e344271622619719bbb18e1b3a
+
 
 
     print('Syncing complete. FIN')

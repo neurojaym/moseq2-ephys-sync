@@ -28,5 +28,5 @@ def ttl_workflow(base_path, save_path, num_leds, led_blink_interval, ephys_fs):
     ephys_events = np.vstack([ephys_timestamps[ttl_bool], abs(channels[ttl_bool])-1, np.sign(channels[ttl_bool])]).T
     codes, ephys_latencies = sync.events_to_codes(ephys_events, nchannels=num_leds, minCodeTime=(led_blink_interval-1))
     codes = np.asarray(codes)
-
+    print ('ephys TTLs converted to bit codes')
     return codes

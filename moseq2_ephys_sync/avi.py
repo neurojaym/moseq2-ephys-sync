@@ -34,13 +34,15 @@ def gen_batch_sequence(nframes, chunk_size, overlap, offset=0):
     return out
 
 
-def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_loc=None, avi_chunk_size=1000, overwrite_extraction=False):
+def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5, led_loc=None, avi_chunk_size=1000, overwrite_extraction=False):
 
     
     # Set up paths
-    ir_path = util.find_file_through_glob_and_symlink(base_path, '*ir.avi')
-    timestamp_path = util.find_file_through_glob_and_symlink(base_path, '*device_timestamps.npy')
-    
+    #ir_path = util.find_file_through_glob_and_symlink(base_path, '*ir.avi')
+    ir_path = util.find_file_through_glob_and_symlink(base_path, '*top.ir.avi')
+    timestamp_path = util.find_file_through_glob_and_symlink(base_path, '*top.device_timestamps.npy')
+    timestamp_matches= util.find_file_through_glob_and_symlink(base_path, '*matched_timestamps.npy')
+    	
     # Load timestamps
     timestamps = np.load(timestamp_path)
 
@@ -53,7 +55,7 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_
         fsize = frame.shape  # nrows ncols nchannels
         break
 
-    vid = imageio.get_reader(ir_path, pixelformat='gray8', dtype='uint8')
+    vid = imageio.get_reader(ir_path, pixelformat='gray8', dtype='uint16')
     nframes = vid.count_frames()
     assert timestamps.shape[0] == nframes
     frame_batches = gen_batch_sequence(nframes, avi_chunk_size, overlap=0, offset=0)
@@ -89,6 +91,7 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_
                                         num_leds=num_leds,
                                         chunk_num=i,
                                         led_loc=led_loc,
+                                        sort_by = 'horizontal',
                                         save_path=save_path)
 
             # Extract events and append to event list
@@ -103,8 +106,8 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5000, led_
 
         ## optional: save the events for further use
         np.savez(avi_led_events_path, led_events=avi_led_events)
-        print('Successfullly extracted avi leds, converting to codes...')    
-
+        print('Successfullly extracted avi leds, converting to codes...') 
+        print('event codes saved at', avi_led_events_path)
     else:
         avi_led_events = np.load(avi_led_events_path)['led_events']
         print('Using saved led events')

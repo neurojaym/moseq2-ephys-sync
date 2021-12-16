@@ -41,6 +41,7 @@ def find_file_through_glob_and_symlink(path, pattern):
         files = remove_confounders(files, pattern[-3:])
         
     # Sanitize output
+    
     assert len(files) > 0, 'Found no files matching pattern'
     assert len(files) == 1, 'Found more than one file matching pattern!'
 
