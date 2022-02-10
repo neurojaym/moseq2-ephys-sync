@@ -19,8 +19,8 @@ led_blink_interval=5,
 arduino_spec=None, 
 s1_led_rois_from_file=False,
 s2_led_rois_from_file=False, 
-overwrite_models=False,
-overwrite_extraction=False,
+overwrite_models=True,
+overwrite_extraction=True,
 leds_to_use=[1,2,3,4]):
     """
     Uses 4-bit code sequences to create a piecewise linear model to predict first_source times from second_source times

@@ -91,9 +91,11 @@ def avi_workflow(base_path, save_path, num_leds=4, led_blink_interval=5, led_loc
                                         num_leds=num_leds,
                                         chunk_num=i,
                                         led_loc=led_loc,
-                                        sort_by = 'horizontal',
+                                        sort_by = 'vertical',
                                         save_path=save_path)
-
+            if leds == []:
+                print('No LEDs found...skipping...')
+                continue
             # Extract events and append to event list
             tmp_event = extract_leds.get_events(leds,timestamps[frame_batches[i]])
             actual_led_nums = np.unique(tmp_event[:,1]) ## i.e. what was found in this chunk

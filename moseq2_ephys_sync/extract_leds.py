@@ -274,7 +274,8 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
     # If still too many features, remove small ones
     if (num_features > num_leds):
         print('Oops! Number of features (%d) did not match the number of LEDs (%d)' % (num_features,num_leds))
-        size_thresh = (28,100)  # min,max
+        #size_thresh = (40,100)  # min,max
+        size_thresh = (30,100)
         labeled_led_img = clean_by_size(labeled_led_img, size_thresh)
     
 
@@ -287,7 +288,9 @@ def get_led_data_with_stds(frame_data_chunk, movie_type, num_leds = 4, chunk_num
     led_labels = [label for label in np.unique(labeled_led_img) if label > 0 ]
     assert led_labels == sorted(led_labels)  # note that these labels aren't guaranteed only the correct ROIs yet... but the labels should be strictly sorted at this point.
     print(f'Found {len(led_labels)} LED ROIs after size- and location-based cleaning...')        
-
+    if len(led_labels)==0:
+        print('no LEDs found...skipping chunk')
+        return [] 
     # At this point, sometimes still weird spots, but they're roughly LED sized.
     # So, to distinguish, get event data and then look for things that don't 
     # look like syncing LEDs in that data.

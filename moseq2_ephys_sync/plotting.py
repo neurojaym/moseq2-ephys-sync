@@ -73,7 +73,7 @@ def plot_model_errors(time_errors, save_path, outname, fname='model_errors'):
 def plot_matched_times(all_predicted_times, t2_codes, t1_codes, n1, n2, save_path, outname):
     f = plt.figure(dpi=600)
 
-    start,stop =  0,100
+    start,stop =  0,200
 
     # plot t2 codes on t1 timebase
     plt.plot(all_predicted_times[start:stop] , t2_codes[start:stop,1],lw=2,label=f'Predicting {n1} from {n2}')
